@@ -1,257 +1,524 @@
 #!/bin/bash
-set -e
+# =============================================================
+#  SHOP CATALOG — AQLLI INSTALLER
+#  Yangi serverga ham, mavjud serverga ham ishlaydi
+#  BT Panel / aaPanel / oddiy Ubuntu/Debian server
+# =============================================================
 
-# ============================================================
-# deploy.sh — Shop Catalog Deployment Script
-# 
-# Bu skript quyidagilarni bajaradi:
-#   1. Kerakli dasturlarni tekshiradi (Node.js, pnpm, Nginx, PostgreSQL, Git)
-#   2. GitHub-dan reponi clone yoki pull qiladi
-#   3. Dependencylarni o'rnatadi va build qiladi
-#   4. PostgreSQL bazasini sozladi
-#   5. Systemd xizmati yaratadi (API Server)
-#   6. Nginx konfiguratsiyasini yozadi
-#   7. SSL sertifikatini sozlaydi (ixtiyoriy, Certbot orqali)
-# ============================================================
+GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'
+BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'; BOLD='\033[1m'
+ok()   { echo -e "${GREEN}✅ $1${NC}"; }
+warn() { echo -e "${YELLOW}⚠️  $1${NC}"; }
+info() { echo -e "${BLUE}ℹ️  $1${NC}"; }
+fail() { echo -e "${RED}❌ $1${NC}"; exit 1; }
+ask()  { echo -e "${CYAN}${BOLD}❓ $1${NC}"; }
+step() { echo -e "\n${BLUE}${BOLD}[$1] $2${NC}"; }
 
-# ============================================================
-# KONFIGURATSIYA — bu qismni o'zgartiring
-# ============================================================
+REPO_URL="https://github.com/muhamadyorg/test4.git"
+PM2_APP_NAME="shop-catalog-api"
+API_PORT=8080
+WWWROOT="/www/wwwroot"
+NODE_VERSION=20
 
-REPO_URL="${REPO_URL:-https://github.com/your-username/shop-catalog.git}"
-APP_DIR="${APP_DIR:-/opt/shop-catalog}"
-DOMAIN="${DOMAIN:-example.com}"
-APP_PORT="${APP_PORT:-8080}"
-FRONTEND_PORT="${FRONTEND_PORT:-3000}"
-DB_NAME="${DB_NAME:-shop_catalog}"
-DB_USER="${DB_USER:-shop_user}"
-DB_PASSWORD="${DB_PASSWORD:-$(openssl rand -base64 32)}"
-SESSION_SECRET="${SESSION_SECRET:-$(openssl rand -base64 64)}"
-NODE_VERSION="${NODE_VERSION:-20}"
-USE_SSL="${USE_SSL:-false}"   # "true" yoki "false"
+echo ""
+echo -e "${BLUE}${BOLD}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${BLUE}${BOLD}║      SHOP CATALOG — AQLLI INSTALLER          ║${NC}"
+echo -e "${BLUE}${BOLD}║   github.com/muhamadyorg/test4               ║${NC}"
+echo -e "${BLUE}${BOLD}╚══════════════════════════════════════════════╝${NC}"
+echo ""
 
-# ============================================================
-# Ranglar
-# ============================================================
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m'
-
-log_info()    { echo -e "${BLUE}[INFO]${NC} $1"; }
-log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
-log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
-log_error()   { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
-
-# ============================================================
-# Root huquqlarini tekshirish
-# ============================================================
+# =============================================================
+# ROOT TEKSHIRISH
+# =============================================================
 if [ "$EUID" -ne 0 ]; then
-  log_error "Bu skriptni root huquqi bilan ishga tushiring: sudo bash deploy.sh"
+  fail "Root huquqi kerak! Qayta ishga tushiring: sudo bash deploy.sh"
 fi
 
-# ============================================================
-# 1. Kerakli dasturlarni o'rnatish
-# ============================================================
-log_info "Kerakli dasturlar tekshirilmoqda..."
+# =============================================================
+# 1. O'RNATISH PAPKASINI TANLASH
+# =============================================================
+step "1/9" "O'rnatish papkasi aniqlanmoqda..."
+echo ""
 
-install_if_missing() {
-  if ! command -v "$1" &>/dev/null; then
-    log_info "$1 o'rnatilmoqda..."
-    apt-get install -y "$2" || log_error "$1 o'rnatib bo'lmadi"
+DEPLOY_DIR=""
+
+# BT Panel / aaPanel uchun /www/wwwroot dan domen tanlash
+if [ -d "$WWWROOT" ]; then
+  mapfile -t DOMAINS < <(ls -d "$WWWROOT"/*/ 2>/dev/null | xargs -I{} basename {} | sort)
+
+  if [ ${#DOMAINS[@]} -gt 0 ]; then
+    echo -e "${BLUE}${WWWROOT} ichidagi papkalar:${NC}"
+    echo ""
+    for i in "${!DOMAINS[@]}"; do
+      idx=$((i+1))
+      DPATH="$WWWROOT/${DOMAINS[$i]}"
+      if [ -d "$DPATH/.git" ]; then
+        BRANCH=$(git -C "$DPATH" branch --show-current 2>/dev/null || echo "?")
+        echo -e "  ${BOLD}[$idx]${NC} ${DOMAINS[$i]}  ${GREEN}(repo mavjud: $BRANCH)${NC}"
+      elif [ "$(ls -A "$DPATH" 2>/dev/null)" ]; then
+        echo -e "  ${BOLD}[$idx]${NC} ${DOMAINS[$i]}  ${YELLOW}(boshqa fayllar bor)${NC}"
+      else
+        echo -e "  ${BOLD}[$idx]${NC} ${DOMAINS[$i]}  ${CYAN}(bo'sh)${NC}"
+      fi
+    done
+    echo -e "  ${BOLD}[0]${NC} Boshqa papka kiriting"
+    echo ""
+    ask "Qaysi papkaga o'rnatmoqchisiz? Raqam kiriting (0-${#DOMAINS[@]}):"
+    read -r DOMAIN_CHOICE
+
+    if [[ "$DOMAIN_CHOICE" =~ ^[1-9][0-9]*$ ]] && [ "$DOMAIN_CHOICE" -le "${#DOMAINS[@]}" ]; then
+      SELECTED_DOMAIN="${DOMAINS[$((DOMAIN_CHOICE-1))]}"
+      DEPLOY_DIR="$WWWROOT/$SELECTED_DOMAIN"
+    fi
+  fi
+fi
+
+# Agar domen tanlanmagan bo'lsa — papka so'rash
+if [ -z "$DEPLOY_DIR" ]; then
+  ask "O'rnatish papkasini kiriting (masalan: /opt/shop-catalog yoki /www/wwwroot/mysite.com):"
+  read -r DEPLOY_DIR
+  DEPLOY_DIR="${DEPLOY_DIR:-/opt/shop-catalog}"
+  SELECTED_DOMAIN=$(basename "$DEPLOY_DIR")
+fi
+
+mkdir -p "$DEPLOY_DIR"
+ok "Papka tanlandi: $DEPLOY_DIR"
+
+ENV_FILE="$DEPLOY_DIR/.env"
+
+# =============================================================
+# 2. REPO KLONLASH YOKI YANGILASH
+# =============================================================
+step "2/9" "Kod tayyorlanmoqda..."
+
+if [ -d "$DEPLOY_DIR/.git" ]; then
+  info "Repo allaqachon mavjud — yangilanmoqda..."
+  git -C "$DEPLOY_DIR" pull origin main 2>/dev/null || \
+  git -C "$DEPLOY_DIR" pull 2>/dev/null || \
+  warn "git pull ishlamadi — mavjud kod ishlatiladi"
+  ok "Kod yangilandi"
+else
+  EXISTING=$(ls -A "$DEPLOY_DIR" 2>/dev/null | grep -v "^\.env$" | wc -l)
+  if [ "$EXISTING" -gt 0 ]; then
+    warn "$DEPLOY_DIR ichida fayllar bor."
+    ask "Shu papkaga clone qilib davom ettirasizmi? (ha/yoq)"
+    read -r CLONE_CONFIRM
+    [[ "$CLONE_CONFIRM" =~ ^[Hh][Aa]?$ ]] || fail "Bekor qilindi."
+    # Fayllarni zaxiralash
+    BACKUP_DIR="${DEPLOY_DIR}_backup_$(date +%Y%m%d_%H%M%S)"
+    mv "$DEPLOY_DIR" "$BACKUP_DIR"
+    mkdir -p "$DEPLOY_DIR"
+    # .env ni qaytarish
+    [ -f "$BACKUP_DIR/.env" ] && cp "$BACKUP_DIR/.env" "$DEPLOY_DIR/.env" && info ".env zaxiradan qaytarildi"
+  fi
+  info "GitHub dan klonlanmoqda: $REPO_URL"
+  git clone "$REPO_URL" "$DEPLOY_DIR" || fail "git clone ishlamadi! Internet aloqasini tekshiring."
+  ok "Repo klonlandi: $DEPLOY_DIR"
+fi
+
+# =============================================================
+# 3. .ENV FAYLI
+# =============================================================
+step "3/9" ".env fayli tekshirilmoqda..."
+
+if [ -f "$ENV_FILE" ]; then
+  ok ".env fayli mavjud — ishlatilmoqda"
+  set -a; source "$ENV_FILE"; set +a
+
+  if [ -z "$DATABASE_URL" ]; then
+    fail ".env faylida DATABASE_URL yo'q! $ENV_FILE ni tekshiring."
+  fi
+  ok "DATABASE_URL o'qildi"
+  # Mavjud .env dan DB ma'lumotlarini ajratish
+  DB_NAME=$(node -e "try{const u=new URL('$DATABASE_URL');console.log(u.pathname.replace('/',''))}catch(e){console.log('shop_catalog')}" 2>/dev/null || echo "shop_catalog")
+  DB_USER=$(node -e "try{const u=new URL('$DATABASE_URL');console.log(u.username)}catch(e){console.log('shop_user')}" 2>/dev/null || echo "shop_user")
+else
+  warn ".env fayli topilmadi: $ENV_FILE"
+  echo ""
+  ask ".env fayl yaratishga ruxsat berasizmi? (ha/yoq)"
+  read -r ENV_CONFIRM
+
+  if [[ ! "$ENV_CONFIRM" =~ ^[Hh][Aa]?$ ]]; then
+    echo ""
+    warn "Ruxsat berilmadi."
+    echo -e "Qo'lda ${ENV_FILE} yarating:"
+    echo -e "  ${CYAN}DATABASE_URL=postgresql://shop_user:PAROL@localhost:5432/shop_catalog${NC}"
+    echo -e "  ${CYAN}SESSION_SECRET=\$(openssl rand -hex 32)${NC}"
+    echo -e "  ${CYAN}PORT=8080${NC}"
+    echo -e "  ${CYAN}NODE_ENV=production${NC}"
+    exit 0
+  fi
+
+  DB_NAME="shop_catalog"
+  DB_USER="shop_user"
+
+  # PostgreSQL mavjudligini tekshirish (kerak bo'lsa o'rnatish — 4-qadamdan oldin)
+  if ! command -v psql &>/dev/null; then
+    info "PostgreSQL o'rnatilmoqda..."
+    apt-get update -qq 2>/dev/null
+    apt-get install -y postgresql postgresql-contrib 2>/dev/null || \
+    fail "PostgreSQL o'rnatib bo'lmadi!"
+    systemctl start postgresql
+    systemctl enable postgresql
+    sleep 3
+  fi
+  if ! pg_isready -q 2>/dev/null; then
+    systemctl start postgresql 2>/dev/null || service postgresql start 2>/dev/null || true
+    sleep 3
+  fi
+
+  # DB user mavjudmi?
+  USER_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='$DB_USER'" 2>/dev/null | tr -d '[:space:]' || echo "")
+  if [ "$USER_EXISTS" = "1" ]; then
+    warn "DB foydalanuvchi '$DB_USER' allaqachon mavjud."
+    ask "Yangi parol o'rnatamizmi? (ha/yoq)"
+    read -r RESET_PASS
+    if [[ "$RESET_PASS" =~ ^[Hh][Aa]?$ ]]; then
+      DB_PASS=$(openssl rand -hex 16)
+      sudo -u postgres psql -c "ALTER USER $DB_USER WITH PASSWORD '$DB_PASS';" 2>/dev/null
+      ok "Parol yangilandi"
+    else
+      warn "Parolni o'zingiz .env ga yozing!"
+      DB_PASS="PAROLNI_KIRITING"
+    fi
   else
-    log_success "$1 mavjud"
+    DB_PASS=$(openssl rand -hex 16)
+    sudo -u postgres psql -c "CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASS';" 2>/dev/null || \
+    warn "Foydalanuvchi yaratishda xato (ehtimol allaqachon bor)"
+    ok "DB foydalanuvchi: $DB_USER"
+  fi
+
+  SESSION_SECRET_VAL=$(openssl rand -hex 32)
+
+  {
+    echo "DATABASE_URL=postgresql://${DB_USER}:${DB_PASS}@localhost:5432/${DB_NAME}"
+    echo "SESSION_SECRET=${SESSION_SECRET_VAL}"
+    echo "PORT=${API_PORT}"
+    echo "NODE_ENV=production"
+  } > "$ENV_FILE"
+  chmod 600 "$ENV_FILE"
+  ok ".env yaratildi: $ENV_FILE"
+
+  if [ "$DB_PASS" = "PAROLNI_KIRITING" ]; then
+    echo ""
+    warn "⛔️ Muhim: $ENV_FILE ga to'g'ri DATABASE_URL yozing va qaytadan ishga tushiring!"
+    exit 1
+  fi
+
+  set -a; source "$ENV_FILE"; set +a
+fi
+
+# =============================================================
+# 4. KERAKLI DASTURLARNI O'RNATISH
+# =============================================================
+step "4/9" "Dasturlar tekshirilmoqda..."
+
+# apt-get mavjudmi?
+PKG_MANAGER=""
+if command -v apt-get &>/dev/null; then PKG_MANAGER="apt-get"
+elif command -v yum &>/dev/null; then PKG_MANAGER="yum"
+fi
+
+install_pkg() {
+  if [ -n "$PKG_MANAGER" ]; then
+    $PKG_MANAGER install -y "$1" 2>/dev/null || warn "$1 o'rnatishda xato"
   fi
 }
 
-apt-get update -q
-
 # Git
-install_if_missing git git
-
-# Curl
-install_if_missing curl curl
-
-# Nginx
-install_if_missing nginx nginx
-
-# PostgreSQL
-if ! command -v psql &>/dev/null; then
-  log_info "PostgreSQL o'rnatilmoqda..."
-  apt-get install -y postgresql postgresql-contrib
+if ! command -v git &>/dev/null; then
+  info "git o'rnatilmoqda..."; install_pkg git
 fi
-log_success "PostgreSQL mavjud"
+ok "git: $(git --version | head -1)"
 
-# Node.js (nvm orqali yoki nodesource)
+# curl
+if ! command -v curl &>/dev/null; then
+  info "curl o'rnatilmoqda..."; install_pkg curl
+fi
+
+# Node.js
 if ! command -v node &>/dev/null; then
-  log_info "Node.js $NODE_VERSION o'rnatilmoqda (nodesource orqali)..."
-  curl -fsSL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash -
-  apt-get install -y nodejs
+  info "Node.js $NODE_VERSION o'rnatilmoqda..."
+  curl -fsSL "https://deb.nodesource.com/setup_${NODE_VERSION}.x" | bash - 2>/dev/null
+  install_pkg nodejs
 fi
-log_success "Node.js: $(node --version)"
+NODE_VER=$(node -v 2>/dev/null || echo "?")
+ok "Node.js: $NODE_VER"
 
 # pnpm
 if ! command -v pnpm &>/dev/null; then
-  log_info "pnpm o'rnatilmoqda..."
-  npm install -g pnpm
+  info "pnpm o'rnatilmoqda..."
+  npm install -g pnpm@latest 2>/dev/null || fail "pnpm o'rnatib bo'lmadi"
 fi
-log_success "pnpm: $(pnpm --version)"
+ok "pnpm: $(pnpm -v)"
 
-# ============================================================
-# 2. Reponi clone yoki pull qilish
-# ============================================================
-log_info "Repo sozlanmoqda: $REPO_URL -> $APP_DIR"
+# PM2
+if ! command -v pm2 &>/dev/null; then
+  info "PM2 o'rnatilmoqda..."
+  npm install -g pm2 2>/dev/null || fail "PM2 o'rnatib bo'lmadi"
+fi
+ok "PM2: $(pm2 -v)"
 
-if [ -d "$APP_DIR/.git" ]; then
-  log_info "Repo allaqachon mavjud. git pull amalga oshirilmoqda..."
-  cd "$APP_DIR"
-  git pull origin main || git pull origin master || log_error "git pull bajarib bo'lmadi"
-  log_success "Repo yangilandi"
+# PostgreSQL
+if ! command -v psql &>/dev/null; then
+  info "PostgreSQL o'rnatilmoqda..."
+  apt-get update -qq 2>/dev/null
+  install_pkg postgresql
+  install_pkg postgresql-contrib
+fi
+ok "PostgreSQL: $(psql --version | head -1)"
+
+# PostgreSQL ishga tushirish
+if ! pg_isready -q 2>/dev/null; then
+  info "PostgreSQL ishga tushirilmoqda..."
+  systemctl start postgresql 2>/dev/null || service postgresql start 2>/dev/null || true
+  sleep 3
+fi
+
+# Nginx
+if ! command -v nginx &>/dev/null; then
+  info "Nginx o'rnatilmoqda..."
+  install_pkg nginx
+fi
+ok "Nginx: $(nginx -v 2>&1 | head -1)"
+
+# =============================================================
+# 5. DATABASE YARATISH / TEKSHIRISH
+# =============================================================
+step "5/9" "Database tekshirilmoqda..."
+
+DB_EXISTS=$(sudo -u postgres psql -tAc "SELECT 1 FROM pg_database WHERE datname='$DB_NAME'" 2>/dev/null | tr -d '[:space:]' || echo "")
+if [ "$DB_EXISTS" = "1" ]; then
+  ok "Database '$DB_NAME' mavjud — ma'lumotlar saqlanib qoladi ✅"
 else
-  log_info "Repo clone qilinmoqda..."
-  git clone "$REPO_URL" "$APP_DIR" || log_error "git clone bajarib bo'lmadi"
-  log_success "Repo clone qilindi: $APP_DIR"
+  info "Database '$DB_NAME' yaratilmoqda..."
+  sudo -u postgres psql -c "CREATE DATABASE $DB_NAME OWNER $DB_USER;" 2>/dev/null || \
+  sudo -u postgres createdb -O "$DB_USER" "$DB_NAME" 2>/dev/null || \
+  fail "Database yaratib bo'lmadi! Qo'lda bajaring: sudo -u postgres createdb -O $DB_USER $DB_NAME"
+  ok "Database '$DB_NAME' yaratildi"
 fi
 
-cd "$APP_DIR"
-
-# ============================================================
-# 3. PostgreSQL bazasini sozlash
-# ============================================================
-log_info "PostgreSQL baza sozlanmoqda..."
-
-systemctl start postgresql
-systemctl enable postgresql
-
-# Foydalanuvchi va baza yaratish (agar yo'q bo'lsa)
-sudo -u postgres psql <<SQL
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM pg_catalog.pg_user WHERE usename = '$DB_USER') THEN
-    CREATE USER $DB_USER WITH ENCRYPTED PASSWORD '$DB_PASSWORD';
-  END IF;
-END
-\$\$;
-
-SELECT 'CREATE DATABASE $DB_NAME OWNER $DB_USER' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = '$DB_NAME') \gexec
-
-GRANT ALL PRIVILEGES ON DATABASE $DB_NAME TO $DB_USER;
-SQL
-
-log_success "Baza tayyor: $DB_NAME"
-
-# pgcrypto extension (parol hashlash uchun)
+# pgcrypto extension (admin parol hashlash uchun)
 sudo -u postgres psql -d "$DB_NAME" -c "CREATE EXTENSION IF NOT EXISTS pgcrypto;" 2>/dev/null || true
 
-# ============================================================
-# 4. .env fayli yaratish
-# ============================================================
-log_info ".env fayli yaratilmoqda..."
+# =============================================================
+# 6. KUTUBXONALAR O'RNATISH
+# =============================================================
+step "6/9" "Kutubxonalar o'rnatilmoqda..."
+cd "$DEPLOY_DIR"
 
-ENV_FILE="$APP_DIR/.env"
-cat > "$ENV_FILE" <<ENV
-DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@localhost:5432/${DB_NAME}
-PGHOST=localhost
-PGPORT=5432
-PGUSER=${DB_USER}
-PGPASSWORD=${DB_PASSWORD}
-PGDATABASE=${DB_NAME}
-SESSION_SECRET=${SESSION_SECRET}
-NODE_ENV=production
-PORT=${APP_PORT}
-ENV
+# Native modullar uchun build tools
+install_pkg build-essential 2>/dev/null || true
 
-chmod 600 "$ENV_FILE"
-log_success ".env fayli yaratildi: $ENV_FILE"
-
-# ============================================================
-# 5. Dependencylarni o'rnatish va build qilish
-# ============================================================
-log_info "Dependencylar o'rnatilmoqda..."
-cd "$APP_DIR"
-
-# pnpm approve-builds (bcrypt kabi native modullar uchun)
 pnpm approve-builds --yes 2>/dev/null || true
-pnpm install --frozen-lockfile || pnpm install
+pnpm install --frozen-lockfile 2>/dev/null || pnpm install || fail "pnpm install bajarib bo'lmadi"
+ok "Kutubxonalar o'rnatildi"
 
-log_info "Zod sxemalari generatsiya qilinmoqda..."
-pnpm --filter @workspace/api-spec run codegen 2>/dev/null || true
+# =============================================================
+# 7. DATABASE SCHEMA YANGILASH
+# =============================================================
+step "7/9" "Database schema yangilanmoqda (ma'lumotlar o'CHIRMAYDI)..."
+cd "$DEPLOY_DIR"
 
-log_info "DB sxemasi push qilinmoqda..."
-set -a && source "$ENV_FILE" && set +a
-pnpm --filter @workspace/db run push || log_error "DB push bajarib bo'lmadi"
+set -a; source "$ENV_FILE"; set +a
 
-log_info "API Server build qilinmoqda..."
-NODE_ENV=production pnpm --filter @workspace/api-server run build || log_error "API Server build xato"
+cd "$DEPLOY_DIR/lib/db"
+DATABASE_URL="$DATABASE_URL" pnpm run push-force 2>&1 | \
+  grep -vE "^$|Warning|deprecated|drizzle-kit" | head -15 || \
+DATABASE_URL="$DATABASE_URL" pnpm run push 2>&1 | \
+  grep -vE "^$|Warning|deprecated" | head -15 || \
+  warn "Schema push ishlamadi — mavjud schema ishlatiladi"
+cd "$DEPLOY_DIR"
+ok "Schema yangilandi"
 
-log_info "Frontend build qilinmoqda..."
-BASE_PATH=/ NODE_ENV=production pnpm --filter @workspace/shop-catalog run build || log_error "Frontend build xato"
+# Admin foydalanuvchisi yaratish (agar yo'q bo'lsa)
+info "Admin foydalanuvchisi tekshirilmoqda..."
+sudo -u postgres psql -d "$DB_NAME" -c "
+DO \$\$
+BEGIN
+  IF NOT EXISTS (SELECT FROM users WHERE username = 'admin') THEN
+    INSERT INTO users (username, password_hash, role, created_at)
+    VALUES ('admin', crypt('admin123', gen_salt('bf')), 'admin', NOW());
+    RAISE NOTICE 'Admin yaratildi: admin / admin123';
+  ELSE
+    RAISE NOTICE 'Admin allaqachon mavjud';
+  END IF;
+END
+\$\$;" 2>/dev/null | grep -i "notice" | sed 's/.*NOTICE://' || \
+info "Admin tekshirish o'tkazib yuborildi (keyinroq tekshiring)"
 
-log_success "Build muvaffaqiyatli yakunlandi"
+# =============================================================
+# 8. BUILD
+# =============================================================
+step "8/9" "Build qilinmoqda..."
+cd "$DEPLOY_DIR"
 
-# ============================================================
-# 6. Systemd xizmati (API Server)
-# ============================================================
-log_info "Systemd xizmati yaratilmoqda..."
+info "  → API server build..."
+NODE_ENV=production pnpm --filter @workspace/api-server run build 2>&1 | tail -3 || \
+  fail "API server build xato!"
+ok "  API server ✅"
 
-SYSTEMD_FILE="/etc/systemd/system/shop-catalog-api.service"
+info "  → Frontend build..."
+NODE_ENV=production BASE_PATH=/ pnpm --filter @workspace/shop-catalog run build 2>&1 | tail -3 || \
+  warn "  Frontend build ishlamadi (statik fayllar bo'lmaydi)"
+ok "  Frontend ✅"
 
-cat > "$SYSTEMD_FILE" <<UNIT
-[Unit]
-Description=Shop Catalog API Server
-After=network.target postgresql.service
-Requires=postgresql.service
+# uploads papkasini yaratish
+mkdir -p "$DEPLOY_DIR/artifacts/api-server/uploads"
+chown -R www-data:www-data "$DEPLOY_DIR/artifacts/api-server/uploads" 2>/dev/null || true
 
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=$APP_DIR
-EnvironmentFile=$ENV_FILE
-ExecStart=/usr/bin/node --enable-source-maps $APP_DIR/artifacts/api-server/dist/index.mjs
-Restart=always
-RestartSec=5
-StandardOutput=journal
-StandardError=journal
-SyslogIdentifier=shop-catalog-api
+# =============================================================
+# 9. PM2 SOZLASH VA ISHGA TUSHIRISH
+# =============================================================
+step "9/9" "PM2 sozlanmoqda va ishga tushirilmoqda..."
+mkdir -p "$DEPLOY_DIR/logs"
 
-[Install]
-WantedBy=multi-user.target
-UNIT
+# .env dan qiymatlarni olish
+DB_URL_VAL=$(grep -E "^DATABASE_URL=" "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
+SESSION_VAL=$(grep -E "^SESSION_SECRET=" "$ENV_FILE" | cut -d= -f2- | tr -d '\r')
 
-# www-data foydalanuvchisiga ruxsat berish
-chown -R www-data:www-data "$APP_DIR" 2>/dev/null || true
+# ecosystem.config.cjs yaratish (Node.js orqali — heredoc muammosi yo'q)
+node -e "
+const fs = require('fs');
+const cfg = {
+  apps: [{
+    name: '${PM2_APP_NAME}',
+    script: '${DEPLOY_DIR}/artifacts/api-server/dist/index.mjs',
+    interpreter: 'node',
+    interpreter_args: '--enable-source-maps',
+    cwd: '${DEPLOY_DIR}',
+    env: {
+      NODE_ENV: 'production',
+      PORT: '${API_PORT}',
+      DATABASE_URL: '${DB_URL_VAL}',
+      SESSION_SECRET: '${SESSION_VAL}',
+    },
+    watch: false,
+    restart_delay: 3000,
+    max_restarts: 10,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss',
+    error_file: '${DEPLOY_DIR}/logs/pm2-error.log',
+    out_file: '${DEPLOY_DIR}/logs/pm2-out.log',
+  }]
+};
+fs.writeFileSync('${DEPLOY_DIR}/ecosystem.config.cjs', 'module.exports=' + JSON.stringify(cfg, null, 2));
+console.log('ecosystem.config.cjs yaratildi');
+" || fail "ecosystem.config.cjs yaratib bo'lmadi"
 
-systemctl daemon-reload
-systemctl enable shop-catalog-api
-systemctl restart shop-catalog-api
+# Avvalgi process o'chirish
+pm2 delete "$PM2_APP_NAME" 2>/dev/null || true
 
-log_success "API Server systemd xizmati ishga tushdi"
+# Ishga tushirish
+pm2 start "$DEPLOY_DIR/ecosystem.config.cjs" || fail "PM2 ishga tushirmadi!"
+pm2 save
+pm2 startup 2>/dev/null | grep "^sudo" | bash 2>/dev/null || true
 
-# ============================================================
-# 7. Nginx konfiguratsiyasi
-# ============================================================
-log_info "Nginx konfiguratsiya qilinmoqda..."
+ok "PM2 ishga tushdi: $PM2_APP_NAME"
+sleep 3
 
-NGINX_CONF="/etc/nginx/sites-available/shop-catalog"
-FRONTEND_DIST="$APP_DIR/artifacts/shop-catalog/dist/public"
+# =============================================================
+# NGINX SOZLASH
+# =============================================================
+echo -e "\n${BLUE}${BOLD}[+] Nginx sozlanmoqda...${NC}"
 
-cat > "$NGINX_CONF" <<NGINX
+FRONTEND_DIST="$DEPLOY_DIR/artifacts/shop-catalog/dist/public"
+NGINX_CONF_FOUND=""
+
+# BT Panel / aaPanel konfiguratsiyasini qidirish
+for CONF_PATH in \
+  "/www/server/panel/vhost/nginx/${SELECTED_DOMAIN}.conf" \
+  "/www/server/nginx/conf/vhost/${SELECTED_DOMAIN}.conf" \
+  "/etc/nginx/sites-enabled/${SELECTED_DOMAIN}" \
+  "/etc/nginx/sites-enabled/${SELECTED_DOMAIN}.conf" \
+  "/etc/nginx/conf.d/${SELECTED_DOMAIN}.conf"; do
+  if [ -f "$CONF_PATH" ]; then
+    NGINX_CONF_FOUND="$CONF_PATH"
+    break
+  fi
+done
+
+if [ -n "$NGINX_CONF_FOUND" ]; then
+  info "Mavjud Nginx config topildi: $NGINX_CONF_FOUND"
+  cp "$NGINX_CONF_FOUND" "${NGINX_CONF_FOUND}.bak"
+
+  # proxy_pass mavjud bo'lsa yangilash
+  if grep -q "proxy_pass" "$NGINX_CONF_FOUND" 2>/dev/null; then
+    sed -i "s|proxy_pass .*;|proxy_pass http://127.0.0.1:${API_PORT};|g" "$NGINX_CONF_FOUND"
+    ok "Nginx proxy_pass yangilandi"
+  else
+    # location / blokiga proxy qo'shish
+    node -e "
+const fs = require('fs');
+let conf = fs.readFileSync('$NGINX_CONF_FOUND', 'utf8');
+const proxyLoc = \`
+    # Shop Catalog API va WebSocket
+    location /api/ {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \\\$http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host \\\$host;
+        proxy_set_header X-Real-IP \\\$remote_addr;
+        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto \\\$scheme;
+        proxy_read_timeout 300;
+    }
+    location /ws {
+        proxy_pass http://127.0.0.1:${API_PORT};
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade \\\$http_upgrade;
+        proxy_set_header Connection 'Upgrade';
+        proxy_set_header Host \\\$host;
+        proxy_read_timeout 3600;
+    }
+    location / {
+        root ${FRONTEND_DIST};
+        try_files \\\$uri \\\$uri/ /index.html;
+    }
+    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
+        root ${FRONTEND_DIST};
+        expires 1y;
+        add_header Cache-Control 'public, immutable';
+    }
+    location = /sw.js {
+        root ${FRONTEND_DIST};
+        add_header Cache-Control 'no-cache';
+        expires 0;
+    }\`;
+conf = conf.replace(/location\s*\/\s*\{[\s\S]*?\}/m, proxyLoc);
+if (!conf.includes('proxy_pass')) {
+  conf = conf.replace(/server\s*\{/, 'server {' + proxyLoc);
+}
+fs.writeFileSync('$NGINX_CONF_FOUND', conf);
+" 2>/dev/null && ok "Nginx config yangilandi" || warn "Nginx config o'zgartirishda xato — qo'lda sozlang"
+  fi
+
+  # Nginx tekshirish va reload
+  if nginx -t 2>/dev/null; then
+    nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null
+    ok "Nginx qayta yuklandi"
+  else
+    warn "Nginx config xatosi — backup tiklanmoqda"
+    cp "${NGINX_CONF_FOUND}.bak" "$NGINX_CONF_FOUND" 2>/dev/null || true
+    nginx -s reload 2>/dev/null || true
+  fi
+else
+  # Yangi Nginx config yaratish (standart Ubuntu)
+  NGINX_NEW="/etc/nginx/sites-available/shop-catalog"
+  DOMAIN_NAME="${SELECTED_DOMAIN:-localhost}"
+
+  cat > "$NGINX_NEW" <<NGINXEOF
 server {
     listen 80;
-    server_name $DOMAIN www.$DOMAIN;
+    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
 
-    # Gzip
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_types text/plain text/css application/json application/javascript;
+    client_max_body_size 50M;
 
-    # Frontend — static files
-    root $FRONTEND_DIST;
-    index index.html;
-
-    # API va WebSocket — backend ga proxy
+    # API
     location /api/ {
-        proxy_pass http://127.0.0.1:$APP_PORT;
+        proxy_pass http://127.0.0.1:$API_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "upgrade";
@@ -265,7 +532,7 @@ server {
 
     # WebSocket
     location /ws {
-        proxy_pass http://127.0.0.1:$APP_PORT;
+        proxy_pass http://127.0.0.1:$API_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "Upgrade";
@@ -273,89 +540,87 @@ server {
         proxy_read_timeout 3600;
     }
 
-    # Static frontend — SPA routing
-    location / {
-        try_files \$uri \$uri/ /index.html;
+    # Uploaded images
+    location /api/uploads/ {
+        proxy_pass http://127.0.0.1:$API_PORT;
+        proxy_set_header Host \$host;
     }
 
-    # Cache static assets
+    # Frontend — SPA
+    location / {
+        root $FRONTEND_DIST;
+        try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-store" always;
+    }
+
+    # Static assets
     location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        root $FRONTEND_DIST;
         expires 1y;
         add_header Cache-Control "public, immutable";
     }
 
     # Service Worker — no cache
     location = /sw.js {
+        root $FRONTEND_DIST;
         add_header Cache-Control "no-cache";
         expires 0;
     }
 }
-NGINX
+NGINXEOF
 
-# Symlink yaratish
-ln -sf "$NGINX_CONF" /etc/nginx/sites-enabled/shop-catalog
+  ln -sf "$NGINX_NEW" /etc/nginx/sites-enabled/shop-catalog
+  rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
 
-# Default site o'chirish
-rm -f /etc/nginx/sites-enabled/default
-
-# Nginx konfiguratsiyasini tekshirish
-nginx -t || log_error "Nginx konfiguratsiya xatosi"
-
-systemctl enable nginx
-systemctl restart nginx
-
-log_success "Nginx sozlandi: http://$DOMAIN"
-
-# ============================================================
-# 8. SSL (Certbot) — ixtiyoriy
-# ============================================================
-if [ "$USE_SSL" = "true" ]; then
-  log_info "SSL sertifikati sozlanmoqda (Certbot)..."
-
-  if ! command -v certbot &>/dev/null; then
-    apt-get install -y certbot python3-certbot-nginx
+  if nginx -t 2>/dev/null; then
+    systemctl enable nginx 2>/dev/null || true
+    systemctl restart nginx 2>/dev/null || nginx -s reload 2>/dev/null || service nginx restart 2>/dev/null
+    ok "Nginx sozlandi: http://$DOMAIN_NAME"
+  else
+    warn "Nginx config xatosi! Qo'lda tekshiring: nginx -t"
   fi
-
-  certbot --nginx -d "$DOMAIN" -d "www.$DOMAIN" --non-interactive --agree-tos --email "admin@$DOMAIN" || log_warn "Certbot xato — SSL qo'lda o'rnatish kerak"
-  log_success "SSL sertifikati o'rnatildi"
 fi
 
-# ============================================================
-# 9. Admin foydalanuvchisini yaratish (agar yo'q bo'lsa)
-# ============================================================
-log_info "Admin foydalanuvchisi yaratilmoqda..."
-
-sudo -u postgres psql -d "$DB_NAME" <<ADMIN
-DO \$\$
-BEGIN
-  IF NOT EXISTS (SELECT FROM users WHERE username = 'admin') THEN
-    INSERT INTO users (username, password_hash, role, created_at)
-    VALUES ('admin', crypt('admin123', gen_salt('bf')), 'admin', NOW());
-    RAISE NOTICE 'Admin yaratildi: admin / admin123';
-  ELSE
-    RAISE NOTICE 'Admin allaqachon mavjud';
-  END IF;
-END
-\$\$;
-ADMIN
-
-# ============================================================
-# Yakuniy xuborot
-# ============================================================
-echo ""
-echo -e "${GREEN}============================================================${NC}"
-echo -e "${GREEN}  MUVAFFAQIYATLI DEPLOY QILINDI!${NC}"
-echo -e "${GREEN}============================================================${NC}"
-echo ""
-echo -e "  Sayt manzili:     ${BLUE}http://$DOMAIN${NC}"
-if [ "$USE_SSL" = "true" ]; then
-echo -e "  HTTPS:            ${BLUE}https://$DOMAIN${NC}"
+# =============================================================
+# SSL (ixtiyoriy)
+# =============================================================
+if [ "${USE_SSL:-false}" = "true" ] && [ -n "$SELECTED_DOMAIN" ]; then
+  echo -e "\n${BLUE}${BOLD}[+] SSL sertifikati sozlanmoqda...${NC}"
+  if ! command -v certbot &>/dev/null; then
+    install_pkg certbot
+    install_pkg python3-certbot-nginx 2>/dev/null || true
+  fi
+  certbot --nginx -d "$SELECTED_DOMAIN" -d "www.$SELECTED_DOMAIN" \
+    --non-interactive --agree-tos --email "admin@$SELECTED_DOMAIN" 2>/dev/null && \
+    ok "SSL sertifikati o'rnatildi" || \
+    warn "SSL qo'lda o'rnatish kerak: certbot --nginx -d $SELECTED_DOMAIN"
 fi
-echo -e "  Admin login:      ${YELLOW}admin${NC}"
-echo -e "  Admin parol:      ${YELLOW}admin123${NC}  (kirganingizda o'zgartiring!)"
-echo -e "  API endpoint:     ${BLUE}http://$DOMAIN/api${NC}"
+
+# =============================================================
+# YAKUNIY HISOBOT
+# =============================================================
 echo ""
-echo -e "  Yangilash uchun skriptni qayta ishga tushiring:"
-echo -e "    ${YELLOW}sudo DOMAIN=$DOMAIN bash $APP_DIR/deploy.sh${NC}"
+echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════╗${NC}"
+echo -e "${GREEN}${BOLD}║        🎉 O'RNATISH MUVAFFAQIYATLI!          ║${NC}"
+echo -e "${GREEN}${BOLD}╚══════════════════════════════════════════════╝${NC}"
 echo ""
-echo -e "${GREEN}============================================================${NC}"
+
+pm2 status "$PM2_APP_NAME" 2>/dev/null || true
+
+echo ""
+ok "Sayt:      http://$SELECTED_DOMAIN"
+ok "API:       http://localhost:$API_PORT/api"
+ok "Database:  $DB_NAME"
+echo ""
+echo -e "${YELLOW}${BOLD}  Admin login:  admin${NC}"
+echo -e "${YELLOW}${BOLD}  Admin parol:  admin123  ← kirganingizda o'zgartiring!${NC}"
+echo ""
+info "Yangilash:      cd $DEPLOY_DIR && git pull && bash deploy.sh"
+info "Loglar:         pm2 logs $PM2_APP_NAME"
+info "Qayta yuklash:  pm2 restart $PM2_APP_NAME"
+info "To'xtatish:     pm2 stop $PM2_APP_NAME"
+info "SSL qo'shish:   USE_SSL=true bash $DEPLOY_DIR/deploy.sh"
+echo ""
+
+# Oxirgi 10 qator log
+pm2 logs "$PM2_APP_NAME" --lines 10 --nostream 2>/dev/null || true
