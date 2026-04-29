@@ -18,7 +18,7 @@ title() { echo -e "${GREEN}── $1${NC}"; }
 
 REPO_URL="https://github.com/muhamadyorg/test4.git"
 PM2_APP_NAME="shop-catalog-api"
-API_PORT=8080
+API_PORT=4773
 WWWROOT="/www/wwwroot"
 NODE_VERSION=20
 # Vite build uchun PORT majburiy (dev server port, build da ishlatilmaydi)
