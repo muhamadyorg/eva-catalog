@@ -417,14 +417,15 @@ ok "PM2 ishga tushdi: $PM2_APP_NAME"
 sleep 3
 
 # =============================================================
-# NGINX SOZLASH
+# NGINX SOZLASH — xavfsiz, to'liq yangi config yozish
 # =============================================================
 echo -e "\n${BLUE}${BOLD}[+] Nginx sozlanmoqda...${NC}"
 
 FRONTEND_DIST="$DEPLOY_DIR/artifacts/shop-catalog/dist/public"
-NGINX_CONF_FOUND=""
+NGINX_WRITE_PATH=""   # qayerga yozamiz
+NGINX_CONF_FOUND=""   # mavjud config (agar bo'lsa)
 
-# BT Panel / aaPanel konfiguratsiyasini qidirish
+# Mavjud nginx config qidirish (BT Panel / aaPanel / Ubuntu)
 for CONF_PATH in \
   "/www/server/panel/vhost/nginx/${SELECTED_DOMAIN}.conf" \
   "/www/server/nginx/conf/vhost/${SELECTED_DOMAIN}.conf" \
@@ -433,90 +434,69 @@ for CONF_PATH in \
   "/etc/nginx/conf.d/${SELECTED_DOMAIN}.conf"; do
   if [ -f "$CONF_PATH" ]; then
     NGINX_CONF_FOUND="$CONF_PATH"
+    NGINX_WRITE_PATH="$CONF_PATH"
     break
   fi
 done
 
+# Topilmasa — standart Ubuntu joyi
+if [ -z "$NGINX_WRITE_PATH" ]; then
+  NGINX_WRITE_PATH="/etc/nginx/sites-available/shop-catalog"
+fi
+
+# Mavjud configdan server_name va listen qatorlarini olib saqlash
+# (SSL, port 443, ipv6 va boshqalarni saqlab qolish uchun)
+LISTEN_LINES="    listen 80;"
+SERVER_NAME_LINE="    server_name ${SELECTED_DOMAIN:-localhost} www.${SELECTED_DOMAIN:-localhost};"
+SSL_EXTRA=""
+
 if [ -n "$NGINX_CONF_FOUND" ]; then
   info "Mavjud Nginx config topildi: $NGINX_CONF_FOUND"
-  cp "$NGINX_CONF_FOUND" "${NGINX_CONF_FOUND}.bak"
 
-  # proxy_pass mavjud bo'lsa yangilash
-  if grep -q "proxy_pass" "$NGINX_CONF_FOUND" 2>/dev/null; then
-    sed -i "s|proxy_pass .*;|proxy_pass http://127.0.0.1:${API_PORT};|g" "$NGINX_CONF_FOUND"
-    ok "Nginx proxy_pass yangilandi"
-  else
-    # location / blokiga proxy qo'shish
-    node -e "
-const fs = require('fs');
-let conf = fs.readFileSync('$NGINX_CONF_FOUND', 'utf8');
-const proxyLoc = \`
-    # Shop Catalog API va WebSocket
-    location /api/ {
-        proxy_pass http://127.0.0.1:${API_PORT};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \\\$http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host \\\$host;
-        proxy_set_header X-Real-IP \\\$remote_addr;
-        proxy_set_header X-Forwarded-For \\\$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \\\$scheme;
-        proxy_read_timeout 300;
-    }
-    location /ws {
-        proxy_pass http://127.0.0.1:${API_PORT};
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade \\\$http_upgrade;
-        proxy_set_header Connection 'Upgrade';
-        proxy_set_header Host \\\$host;
-        proxy_read_timeout 3600;
-    }
-    location / {
-        root ${FRONTEND_DIST};
-        try_files \\\$uri \\\$uri/ /index.html;
-    }
-    location ~* \\.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)\$ {
-        root ${FRONTEND_DIST};
-        expires 1y;
-        add_header Cache-Control 'public, immutable';
-    }
-    location = /sw.js {
-        root ${FRONTEND_DIST};
-        add_header Cache-Control 'no-cache';
-        expires 0;
-    }\`;
-conf = conf.replace(/location\s*\/\s*\{[\s\S]*?\}/m, proxyLoc);
-if (!conf.includes('proxy_pass')) {
-  conf = conf.replace(/server\s*\{/, 'server {' + proxyLoc);
-}
-fs.writeFileSync('$NGINX_CONF_FOUND', conf);
-" 2>/dev/null && ok "Nginx config yangilandi" || warn "Nginx config o'zgartirishda xato — qo'lda sozlang"
-  fi
+  # Backup yaratish — har doim
+  BACKUP_PATH="${NGINX_CONF_FOUND}.bak.$(date +%Y%m%d_%H%M%S)"
+  cp "$NGINX_CONF_FOUND" "$BACKUP_PATH"
+  ok "Zaxira saqlandi: $BACKUP_PATH"
 
-  # Nginx tekshirish va reload
-  if nginx -t 2>/dev/null; then
-    nginx -s reload 2>/dev/null || systemctl reload nginx 2>/dev/null || service nginx reload 2>/dev/null
-    ok "Nginx qayta yuklandi"
-  else
-    warn "Nginx config xatosi — backup tiklanmoqda"
-    cp "${NGINX_CONF_FOUND}.bak" "$NGINX_CONF_FOUND" 2>/dev/null || true
-    nginx -s reload 2>/dev/null || true
-  fi
-else
-  # Yangi Nginx config yaratish (standart Ubuntu)
-  NGINX_NEW="/etc/nginx/sites-available/shop-catalog"
-  DOMAIN_NAME="${SELECTED_DOMAIN:-localhost}"
+  # listen qatorlarini olish (443 ssl ham bo'lishi mumkin)
+  EXTRACTED_LISTEN=$(grep -E "^\s*listen\s" "$NGINX_CONF_FOUND" 2>/dev/null | head -6 | sed 's/^[[:space:]]*/    /' || true)
+  [ -n "$EXTRACTED_LISTEN" ] && LISTEN_LINES="$EXTRACTED_LISTEN"
 
-  cat > "$NGINX_NEW" <<NGINXEOF
+  # server_name qatorini olish
+  EXTRACTED_SN=$(grep -E "^\s*server_name\s" "$NGINX_CONF_FOUND" 2>/dev/null | head -1 | sed 's/^[[:space:]]*/    /' || true)
+  [ -n "$EXTRACTED_SN" ] && SERVER_NAME_LINE="$EXTRACTED_SN"
+
+  # SSL sertifikat yo'llari (certbot qo'shgan bo'lsa)
+  SSL_EXTRA=$(grep -E "^\s*(ssl_certificate|ssl_certificate_key|include.*ssl|ssl_protocols|ssl_ciphers|ssl_session)" \
+    "$NGINX_CONF_FOUND" 2>/dev/null | sed 's/^[[:space:]]*/    /' || true)
+fi
+
+# TO'LIQ YANGI CONFIG YOZISH
+# (mavjud configni yamalamasdan — to'liq almashtirish)
+{
+cat <<NGINXEOF
+# Shop Catalog — auto-generated by deploy.sh $(date +%Y-%m-%d)
+# Eski config: ${BACKUP_PATH:-yo'q}
 server {
-    listen 80;
-    server_name $DOMAIN_NAME www.$DOMAIN_NAME;
+$LISTEN_LINES
+$SERVER_NAME_LINE
+
+    # SSL (agar avval sozlangan bo'lsa)
+NGINXEOF
+
+if [ -n "$SSL_EXTRA" ]; then
+  echo "$SSL_EXTRA"
+fi
+
+cat <<NGINXEOF2
 
     gzip on;
-    gzip_types text/plain text/css application/json application/javascript;
+    gzip_vary on;
+    gzip_types text/plain text/css application/json application/javascript
+               text/xml application/xml text/javascript image/svg+xml;
     client_max_body_size 50M;
 
-    # API
+    # ── API (backend) ──────────────────────────────────────────
     location /api/ {
         proxy_pass http://127.0.0.1:$API_PORT;
         proxy_http_version 1.1;
@@ -527,58 +507,101 @@ server {
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto \$scheme;
         proxy_read_timeout 300;
-        proxy_connect_timeout 300;
+        proxy_connect_timeout 60;
+        proxy_send_timeout 300;
     }
 
-    # WebSocket
+    # ── WebSocket ──────────────────────────────────────────────
     location /ws {
         proxy_pass http://127.0.0.1:$API_PORT;
         proxy_http_version 1.1;
         proxy_set_header Upgrade \$http_upgrade;
         proxy_set_header Connection "Upgrade";
         proxy_set_header Host \$host;
-        proxy_read_timeout 3600;
+        proxy_set_header X-Real-IP \$remote_addr;
+        proxy_read_timeout 86400;
+        proxy_send_timeout 86400;
     }
 
-    # Uploaded images
+    # ── Yuklangan rasmlar ──────────────────────────────────────
     location /api/uploads/ {
         proxy_pass http://127.0.0.1:$API_PORT;
         proxy_set_header Host \$host;
+        proxy_set_header X-Real-IP \$remote_addr;
+        expires 30d;
+        add_header Cache-Control "public";
     }
 
-    # Frontend — SPA
-    location / {
-        root $FRONTEND_DIST;
-        try_files \$uri \$uri/ /index.html;
-        add_header Cache-Control "no-store" always;
-    }
-
-    # Static assets
-    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
-        root $FRONTEND_DIST;
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Service Worker — no cache
+    # ── Service Worker — kesh yo'q ─────────────────────────────
     location = /sw.js {
+        root $FRONTEND_DIST;
+        add_header Cache-Control "no-cache, no-store, must-revalidate";
+        add_header Pragma "no-cache";
+        expires 0;
+    }
+
+    # ── manifest.json — kesh yo'q ──────────────────────────────
+    location = /manifest.json {
         root $FRONTEND_DIST;
         add_header Cache-Control "no-cache";
         expires 0;
     }
+
+    # ── Statik fayllar (JS, CSS, rasmlar) ─────────────────────
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot|webp|avif)\$ {
+        root $FRONTEND_DIST;
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # ── Frontend SPA — barcha qolgan so'rovlar ─────────────────
+    location / {
+        root $FRONTEND_DIST;
+        index index.html;
+        try_files \$uri \$uri/ /index.html;
+        add_header Cache-Control "no-store, no-cache, must-revalidate" always;
+        add_header Pragma "no-cache" always;
+    }
 }
-NGINXEOF
+NGINXEOF2
+} > "$NGINX_WRITE_PATH"
 
-  ln -sf "$NGINX_NEW" /etc/nginx/sites-enabled/shop-catalog
+ok "Nginx config yozildi: $NGINX_WRITE_PATH"
+
+# Standart Ubuntu uchun symlink yaratish
+if [[ "$NGINX_WRITE_PATH" == /etc/nginx/sites-available/* ]]; then
+  SYMLINK="/etc/nginx/sites-enabled/$(basename "$NGINX_WRITE_PATH")"
+  ln -sf "$NGINX_WRITE_PATH" "$SYMLINK"
+  # default saytni o'chirish (port 80 konfliktini oldini olish)
   rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+  ok "Symlink yaratildi: $SYMLINK"
+fi
 
-  if nginx -t 2>/dev/null; then
-    systemctl enable nginx 2>/dev/null || true
-    systemctl restart nginx 2>/dev/null || nginx -s reload 2>/dev/null || service nginx restart 2>/dev/null
-    ok "Nginx sozlandi: http://$DOMAIN_NAME"
+# Config sintaksisini tekshirish
+echo ""
+info "Nginx config tekshirilmoqda (nginx -t)..."
+if nginx -t 2>&1; then
+  echo ""
+  ok "Nginx config to'g'ri ✅"
+  # Xavfsiz reload (restart emas — mavjud ulanishlarni uzmaydi)
+  nginx -s reload 2>/dev/null || \
+  systemctl reload nginx 2>/dev/null || \
+  service nginx reload 2>/dev/null || \
+  systemctl restart nginx 2>/dev/null
+  ok "Nginx qayta yuklandi"
+else
+  echo ""
+  warn "Nginx config XATO! Eski config tiklanmoqda..."
+  if [ -n "$BACKUP_PATH" ] && [ -f "$BACKUP_PATH" ]; then
+    cp "$BACKUP_PATH" "$NGINX_WRITE_PATH"
+    nginx -s reload 2>/dev/null || true
+    warn "Eski config tiklandi: $BACKUP_PATH"
   else
-    warn "Nginx config xatosi! Qo'lda tekshiring: nginx -t"
+    warn "Backup yo'q. Qo'lda tekshiring: nginx -t"
   fi
+  warn "To'g'rilash uchun: nano $NGINX_WRITE_PATH"
+  warn "Keyin: nginx -t && nginx -s reload"
 fi
 
 # =============================================================
