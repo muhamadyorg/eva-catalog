@@ -333,10 +333,39 @@ else
   FRONTEND_BUILD_OK=true
 fi
 
-# uploads papkasi
+# ── Nginx qaysi user bilan ishlayotganini aniqlash ──────────
+# BT Panel: www  |  Ubuntu: www-data  |  CentOS: nginx
+NGINX_USER=$(grep -E "^\s*user\s+" /etc/nginx/nginx.conf 2>/dev/null \
+  | head -1 | awk '{print $2}' | tr -d ';' || echo "")
+[ -z "$NGINX_USER" ] && NGINX_USER=$(grep -rE "^\s*user\s+" /www/server/nginx/conf/ 2>/dev/null \
+  | head -1 | awk '{print $2}' | tr -d ';' || echo "")
+[ -z "$NGINX_USER" ] && NGINX_USER="www-data"
+info "Nginx user: $NGINX_USER"
+
+# uploads papkasi — Nginx user ownerlik
 mkdir -p "$DEPLOY_DIR/artifacts/api-server/uploads"
-chown -R www-data:www-data "$DEPLOY_DIR/artifacts/api-server/uploads" 2>/dev/null || true
-chown -R www-data:www-data "$DEPLOY_DIR" 2>/dev/null || true
+chown -R "$NGINX_USER":"$NGINX_USER" "$DEPLOY_DIR/artifacts/api-server/uploads" 2>/dev/null || true
+chmod -R 755 "$DEPLOY_DIR/artifacts/api-server/uploads" 2>/dev/null || true
+
+# Frontend dist ruxsatlari — Nginx o'qishi uchun
+# MUHIM: butun DEPLOY_DIR ni Nginx user ga chown QILINMAYDI
+# Papkalar: 755 (o+rx), fayllar: 644 (o+r)
+if [ -d "$FRONTEND_DIST" ]; then
+  find "$FRONTEND_DIST" -type d -exec chmod 755 {} \; 2>/dev/null || true
+  find "$FRONTEND_DIST" -type f -exec chmod 644 {} \; 2>/dev/null || true
+  # Nginx user ownerlik berish (chown, lekin faqat dist papkasiga)
+  chown -R "$NGINX_USER":"$NGINX_USER" "$FRONTEND_DIST" 2>/dev/null || true
+  ok "Frontend ruxsatlari: 755/644 (owner: $NGINX_USER)"
+fi
+
+# Ota papkalar ham o+x bo'lishi shart (Nginx directory traversal uchun)
+# /www/wwwroot/domain → /www/wwwroot → /www
+PARENT="$DEPLOY_DIR"
+while [ "$PARENT" != "/" ]; do
+  chmod o+x "$PARENT" 2>/dev/null || true
+  PARENT=$(dirname "$PARENT")
+done
+ok "Ota papkalar traversal: o+x qo'yildi"
 
 # =============================================================
 # 9. PM2 ISHGA TUSHIRISH
