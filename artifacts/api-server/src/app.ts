@@ -12,6 +12,7 @@ import productsRouter from "./routes/products.js";
 import usersRouter from "./routes/users.js";
 import attributesRouter from "./routes/attributes.js";
 import uploadsRouter, { UPLOADS_DIR } from "./routes/uploads.js";
+import backupRouter from "./routes/backup.js";
 import { logger } from "./lib/logger.js";
 
 declare module "express-session" {
@@ -73,5 +74,6 @@ app.use("/api/users", usersRouter);
 app.use("/api/attributes", attributesRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/uploads", express.static(UPLOADS_DIR));
+app.use("/api/backup", backupRouter);
 
 export default app;
