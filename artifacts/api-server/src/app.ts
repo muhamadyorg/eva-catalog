@@ -1,8 +1,22 @@
 import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
-import router from "./routes";
-import { logger } from "./lib/logger";
+import session from "express-session";
+import cookieParser from "cookie-parser";
+import router from "./routes/index.js";
+import authRouter from "./routes/auth.js";
+import catalogsRouter from "./routes/catalogs.js";
+import productsRouter from "./routes/products.js";
+import usersRouter from "./routes/users.js";
+import attributesRouter from "./routes/attributes.js";
+import { logger } from "./lib/logger.js";
+
+declare module "express-session" {
+  interface SessionData {
+    userId?: number;
+    role?: "admin" | "user";
+  }
+}
 
 const app: Express = express();
 
@@ -25,10 +39,34 @@ app.use(
     },
   }),
 );
-app.use(cors());
+
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "shop-catalog-secret",
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    },
+  }),
+);
 
 app.use("/api", router);
+app.use("/api/auth", authRouter);
+app.use("/api/catalogs", catalogsRouter);
+app.use("/api/products", productsRouter);
+app.use("/api/users", usersRouter);
+app.use("/api/attributes", attributesRouter);
 
 export default app;
