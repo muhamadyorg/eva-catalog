@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useCart } from "./cart-provider";
+import { useAuth } from "./auth-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,25 +32,24 @@ export function CartButton() {
 
 export function CartDrawer() {
   const { items, isOpen, closeCart, removeItem, updateItem, clearAll, placeOrderNow, count } = useCart();
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
+  const { user } = useAuth();
   const [notes, setNotes] = useState("");
   const [isOrdering, setIsOrdering] = useState(false);
   const [showOrderForm, setShowOrderForm] = useState(false);
+  const [orderDone, setOrderDone] = useState(false);
 
   const total = items.reduce((sum, i) => sum + Number(i.product.price) * i.quantity, 0);
 
+  const hasProfile = !!(user?.phone || user?.displayName);
+
   async function handleOrder() {
-    if (!guestPhone.trim()) {
-      return;
-    }
     setIsOrdering(true);
     try {
-      await placeOrderNow(guestName || undefined, guestPhone, notes || undefined);
-      setGuestName("");
-      setGuestPhone("");
+      await placeOrderNow(notes || undefined);
       setNotes("");
       setShowOrderForm(false);
+      setOrderDone(true);
+      setTimeout(() => setOrderDone(false), 3000);
     } finally {
       setIsOrdering(false);
     }
@@ -71,7 +71,14 @@ export function CartDrawer() {
           </SheetTitle>
         </SheetHeader>
 
-        {items.length === 0 ? (
+        {orderDone ? (
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 p-8 text-center">
+            <div className="text-5xl">🎉</div>
+            <p className="text-xl font-semibold">Buyurtma yuborildi!</p>
+            <p className="text-muted-foreground text-sm">Admin yoki menejer tez orada siz bilan bog'lanadi.</p>
+            <Button onClick={closeCart} className="mt-2">Yopish</Button>
+          </div>
+        ) : items.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground p-8">
             <ShoppingBag className="h-16 w-16 opacity-20" />
             <p className="text-lg font-medium">Savat bo'sh</p>
@@ -192,38 +199,31 @@ export function CartDrawer() {
               ) : (
                 <div className="space-y-3">
                   <Separator />
-                  <p className="font-medium text-sm">Buyurtma ma'lumotlari</p>
-                  <div>
-                    <Label htmlFor="cart-name" className="text-xs">Ismingiz</Label>
-                    <Input
-                      id="cart-name"
-                      value={guestName}
-                      onChange={(e) => setGuestName(e.target.value)}
-                      placeholder="Ism Familiya"
-                      className="mt-1"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="cart-phone" className="text-xs">Telefon *</Label>
-                    <Input
-                      id="cart-phone"
-                      value={guestPhone}
-                      onChange={(e) => setGuestPhone(e.target.value)}
-                      placeholder="+998 90 123 45 67"
-                      className="mt-1"
-                      required
-                    />
-                  </div>
+
+                  {user?.displayName || user?.phone ? (
+                    <div className="rounded-lg bg-secondary/50 p-3 space-y-1">
+                      <p className="text-xs font-medium text-muted-foreground">Buyurtma ma'lumotlari</p>
+                      {user?.displayName && <p className="text-sm font-medium">{user.displayName}</p>}
+                      {user?.phone && <p className="text-sm text-muted-foreground">{user.phone}</p>}
+                      {user?.location && <p className="text-xs text-muted-foreground">{user.location}</p>}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground bg-yellow-500/10 border border-yellow-500/20 rounded p-2">
+                      Profilingizda ism va telefon yo'q. Admin siz bilan savatda ko'rgan mahsulotlar bo'yicha bog'lanadi.
+                    </p>
+                  )}
+
                   <div>
                     <Label htmlFor="cart-notes" className="text-xs">Izoh (ixtiyoriy)</Label>
                     <Input
                       id="cart-notes"
                       value={notes}
                       onChange={(e) => setNotes(e.target.value)}
-                      placeholder="Qo'shimcha ma'lumot..."
+                      placeholder="Qo'shimcha ma'lumot, manzil..."
                       className="mt-1"
                     />
                   </div>
+
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -235,7 +235,7 @@ export function CartDrawer() {
                     <Button
                       className="flex-1"
                       onClick={handleOrder}
-                      disabled={isOrdering || !guestPhone.trim()}
+                      disabled={isOrdering}
                     >
                       {isOrdering ? "Yuborilmoqda..." : "Buyurtmani tasdiqlash"}
                     </Button>

@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect } from "react";
 import { useGetMe, getGetMeQueryKey, UserPublic } from "@workspace/api-client-react";
 import { useLocation } from "wouter";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 type AuthContextType = {
-  user: UserPublic | null | undefined;
+  user: (UserPublic & { displayName?: string | null; location?: string | null; phone?: string | null }) | null | undefined;
   isLoading: boolean;
   isAdmin: boolean;
 };
@@ -13,6 +14,11 @@ const AuthContext = createContext<AuthContextType>({
   isLoading: true,
   isAdmin: false,
 });
+
+function WebSocketAuth({ userId, role }: { userId?: number; role?: string }) {
+  useWebSocket(userId, role);
+  return null;
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation();
@@ -33,11 +39,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        user: user ?? null,
+        user: (user as AuthContextType["user"]) ?? null,
         isLoading,
         isAdmin: user?.role === "admin",
       }}
     >
+      <WebSocketAuth userId={user?.id} role={user?.role} />
       {children}
     </AuthContext.Provider>
   );

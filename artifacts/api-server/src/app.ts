@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import cors from "cors";
 import pinoHttp from "pino-http";
 import session from "express-session";
+import connectPgSimple from "connect-pg-simple";
 import cookieParser from "cookie-parser";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,6 +16,7 @@ import uploadsRouter, { UPLOADS_DIR } from "./routes/uploads.js";
 import backupRouter from "./routes/backup.js";
 import cartRouter from "./routes/cart.js";
 import ordersRouter from "./routes/orders.js";
+import chatRouter from "./routes/chat.js";
 import { checkSession } from "./middlewares/auth.js";
 import { logger } from "./lib/logger.js";
 
@@ -45,15 +47,23 @@ app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+const PgSession = connectPgSimple(session);
+
 app.use(
   session({
+    store: new PgSession({
+      conString: process.env.DATABASE_URL,
+      tableName: "session",
+      createTableIfMissing: true,
+    }),
     secret: process.env.SESSION_SECRET || "shop-catalog-secret",
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
       secure: false,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     },
   }),
 );
@@ -71,5 +81,6 @@ app.use("/api/uploads", express.static(UPLOADS_DIR));
 app.use("/api/backup", backupRouter);
 app.use("/api/cart", cartRouter);
 app.use("/api/orders", ordersRouter);
+app.use("/api/chat", chatRouter);
 
 export default app;

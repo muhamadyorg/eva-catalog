@@ -16,7 +16,7 @@ function formatOrder(o: typeof ordersTable.$inferSelect) {
 
 router.post("/", requireAuth, async (req, res) => {
   const userId = req.session!.userId!;
-  const { guestName, guestPhone, notes } = req.body;
+  const { notes } = req.body;
 
   const cartItems = await db.select().from(cartItemsTable).where(eq(cartItemsTable.userId, userId));
   if (cartItems.length === 0) {
@@ -47,8 +47,9 @@ router.post("/", requireAuth, async (req, res) => {
 
   const [order] = await db.insert(ordersTable).values({
     userId,
-    guestName: guestName || user?.username || null,
-    guestPhone: guestPhone || null,
+    guestName: user?.displayName || user?.username || null,
+    guestPhone: user?.phone || null,
+    guestLocation: user?.location || null,
     items: orderItems,
     totalPrice: String(total),
     status: "new",

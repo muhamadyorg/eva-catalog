@@ -14,6 +14,9 @@ export const usersTable = pgTable("users", {
   role: roleEnum("role").notNull().default("user"),
   isBlocked: boolean("is_blocked").notNull().default(false),
   sessionToken: text("session_token"),
+  displayName: text("display_name"),
+  location: text("location"),
+  phone: text("phone"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -59,10 +62,34 @@ export const ordersTable = pgTable("orders", {
   userId: integer("user_id"),
   guestName: text("guest_name"),
   guestPhone: text("guest_phone"),
+  guestLocation: text("guest_location"),
   items: jsonb("items").notNull().default([]),
   totalPrice: numeric("total_price", { precision: 12, scale: 2 }),
   status: text("status").notNull().default("new"),
   notes: text("notes"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const conversationsTable = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  lastMessageAt: timestamp("last_message_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const chatMessagesTable = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  conversationId: integer("conversation_id").notNull(),
+  senderId: integer("sender_id").notNull(),
+  type: text("type").notNull().default("text"),
+  content: text("content"),
+  fileUrl: text("file_url"),
+  fileName: text("file_name"),
+  fileSize: integer("file_size"),
+  duration: integer("duration"),
+  isEdited: boolean("is_edited").notNull().default(false),
+  isDeleted: boolean("is_deleted").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -72,6 +99,7 @@ export const insertCatalogSchema = createInsertSchema(catalogsTable).omit({ id: 
 export const insertProductSchema = createInsertSchema(productsTable).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertCartItemSchema = createInsertSchema(cartItemsTable).omit({ id: true, createdAt: true });
 export const insertOrderSchema = createInsertSchema(ordersTable).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertMessageSchema = createInsertSchema(chatMessagesTable).omit({ id: true, createdAt: true, updatedAt: true });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof usersTable.$inferSelect;
@@ -81,3 +109,5 @@ export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type Product = typeof productsTable.$inferSelect;
 export type CartItem = typeof cartItemsTable.$inferSelect;
 export type Order = typeof ordersTable.$inferSelect;
+export type Conversation = typeof conversationsTable.$inferSelect;
+export type ChatMessage = typeof chatMessagesTable.$inferSelect;

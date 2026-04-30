@@ -14,15 +14,29 @@ import CatalogBrowser from "@/pages/index";
 import AdminUsers from "@/pages/admin/users";
 import AdminSettings from "@/pages/admin/settings";
 import AdminOrders from "@/pages/admin/orders";
+import AdminChat from "@/pages/admin/chat";
+import UserChat from "@/pages/chat";
 
 const queryClient = new QueryClient();
 
-function ProtectedRoute({ component: Component, adminOnly = false, managerOk = false, ...rest }: any) {
+function ProtectedRoute({
+  component: Component,
+  adminOnly = false,
+  managerOk = false,
+}: {
+  component: React.ComponentType;
+  adminOnly?: boolean;
+  managerOk?: boolean;
+}) {
   const { user, isLoading, isAdmin } = useAuth();
   const role = user?.role;
 
   if (isLoading) {
-    return <div className="h-screen w-full flex items-center justify-center">Yuklanmoqda...</div>;
+    return (
+      <div className="h-screen w-full flex items-center justify-center">
+        <div className="text-muted-foreground text-sm">Yuklanmoqda...</div>
+      </div>
+    );
   }
 
   if (!user) {
@@ -31,6 +45,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, managerOk = f
 
   if (adminOnly && !isAdmin) {
     if (managerOk && role === "manager") {
+      // ok
     } else {
       return <Redirect to="/" />;
     }
@@ -38,7 +53,7 @@ function ProtectedRoute({ component: Component, adminOnly = false, managerOk = f
 
   return (
     <Layout>
-      <Component {...rest} />
+      <Component />
     </Layout>
   );
 }
@@ -48,8 +63,10 @@ function AppRoutes() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/" component={() => <ProtectedRoute component={CatalogBrowser} />} />
-      <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
+      <Route path="/chat" component={() => <ProtectedRoute component={UserChat} />} />
       <Route path="/admin/orders" component={() => <ProtectedRoute component={AdminOrders} adminOnly managerOk />} />
+      <Route path="/admin/chat" component={() => <ProtectedRoute component={AdminChat} adminOnly managerOk />} />
+      <Route path="/admin/users" component={() => <ProtectedRoute component={AdminUsers} adminOnly />} />
       <Route path="/admin/settings" component={() => <ProtectedRoute component={AdminSettings} adminOnly />} />
       <Route component={NotFound} />
     </Switch>

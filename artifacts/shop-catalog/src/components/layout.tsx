@@ -1,4 +1,4 @@
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { useAuth } from "./auth-provider";
 import { useLogout, getGetMeQueryKey } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import {
   Moon,
   Menu,
   ShoppingBag,
+  MessageCircle,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
 import { useWebSocket } from "@/hooks/use-websocket";
@@ -28,6 +29,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { theme, setTheme } = useTheme();
   const { isConnected } = useWebSocket();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [location] = useLocation();
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -42,7 +44,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <>
       <Link
         href="/"
-        className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors"
+        className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors ${location === "/" ? "bg-secondary" : ""}`}
         onClick={onClose}
       >
         <PackageSearch className="h-4 w-4" />
@@ -55,17 +57,25 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </div>
           <Link
             href="/admin/orders"
-            className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors"
+            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors ${location === "/admin/orders" ? "bg-secondary" : ""}`}
             onClick={onClose}
           >
             <ShoppingBag className="h-4 w-4" />
             Buyurtmalar
           </Link>
+          <Link
+            href="/admin/chat"
+            className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors ${location === "/admin/chat" ? "bg-secondary" : ""}`}
+            onClick={onClose}
+          >
+            <MessageCircle className="h-4 w-4" />
+            Chat
+          </Link>
           {isAdmin && (
             <>
               <Link
                 href="/admin/users"
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors ${location === "/admin/users" ? "bg-secondary" : ""}`}
                 onClick={onClose}
               >
                 <Users className="h-4 w-4" />
@@ -73,7 +83,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </Link>
               <Link
                 href="/admin/settings"
-                className="flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors"
+                className={`flex items-center gap-3 px-3 py-2 rounded-md hover:bg-secondary text-sm font-medium transition-colors ${location === "/admin/settings" ? "bg-secondary" : ""}`}
                 onClick={onClose}
               >
                 <Settings className="h-4 w-4" />
@@ -86,9 +96,53 @@ export function Layout({ children }: { children: React.ReactNode }) {
     </>
   );
 
+  if (!canManage) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <header className="h-12 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-50">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-7 bg-primary rounded flex items-center justify-center text-primary-foreground">
+              <PackageSearch className="h-4 w-4" />
+            </div>
+            <span className="font-semibold text-sm tracking-tight">Shop Catalog</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            <CartButton />
+            <Link href="/chat">
+              <Button variant="ghost" size="icon" className="h-8 w-8" title="Chat">
+                <MessageCircle className="h-4 w-4" />
+              </Button>
+            </Link>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 text-muted-foreground hover:text-foreground"
+              onClick={handleLogout}
+              title="Chiqish"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </div>
+        </header>
+        <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
+          <div className="flex-1 overflow-y-auto p-4">
+            {children}
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row bg-background">
-      {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-60 flex-col border-r border-border bg-card/50 backdrop-blur-sm sticky top-0 h-screen">
         <div className="h-14 flex items-center px-4 border-b border-border gap-2">
           <div className="h-8 w-8 bg-primary rounded flex items-center justify-center text-primary-foreground">
@@ -138,7 +192,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
-      {/* Mobile Header */}
       <header className="md:hidden h-14 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4 sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="h-8 w-8 bg-primary rounded flex items-center justify-center text-primary-foreground">
@@ -189,7 +242,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Desktop: cart button in top right of main */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <div className="hidden md:flex items-center justify-end px-6 h-14 border-b border-border gap-2 bg-card/30">
           <CartButton />

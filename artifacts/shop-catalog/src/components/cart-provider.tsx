@@ -14,7 +14,7 @@ interface CartContextType {
   removeItem: (id: number) => Promise<void>;
   updateItem: (id: number, quantity: number, selectedColor?: string) => Promise<void>;
   clearAll: () => Promise<void>;
-  placeOrderNow: (guestName?: string, guestPhone?: string, notes?: string) => Promise<void>;
+  placeOrderNow: (notes?: string) => Promise<void>;
   isLoading: boolean;
 }
 
@@ -85,8 +85,8 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     await clearMutation.mutateAsync();
   }
 
-  async function placeOrderNow(guestName?: string, guestPhone?: string, notes?: string) {
-    await placeMutation.mutateAsync({ data: { guestName, guestPhone, notes } });
+  async function placeOrderNow(notes?: string) {
+    await placeMutation.mutateAsync({ data: { notes } });
   }
 
   return (

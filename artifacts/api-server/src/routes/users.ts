@@ -13,6 +13,9 @@ function formatUser(u: typeof usersTable.$inferSelect) {
     role: u.role,
     isBlocked: u.isBlocked,
     hasActiveSession: !!u.sessionToken,
+    displayName: u.displayName,
+    location: u.location,
+    phone: u.phone,
     createdAt: u.createdAt,
   };
 }
@@ -23,7 +26,7 @@ router.get("/", requireAuth, requireAdmin, async (_req, res) => {
 });
 
 router.post("/", requireAuth, requireAdmin, async (req, res) => {
-  const { username, password, role } = req.body;
+  const { username, password, role, displayName, location, phone } = req.body;
   if (!username || !password || !role) {
     res.status(400).json({ error: "username, password, role majburiy" });
     return;
@@ -31,23 +34,38 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
   const hash = await bcrypt.hash(password, 10);
   const [user] = await db
     .insert(usersTable)
-    .values({ username, passwordHash: hash, role })
+    .values({ username, passwordHash: hash, role, displayName: displayName || null, location: location || null, phone: phone || null })
     .returning();
   res.status(201).json(formatUser(user));
 });
 
 router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   const id = Number(req.params.id);
-  const { username, password, role } = req.body;
+  const { username, password, role, displayName, location, phone } = req.body;
   const update: Record<string, unknown> = {};
   if (username) update.username = username;
   if (password) update.passwordHash = await bcrypt.hash(password, 10);
   if (role) update.role = role;
+  if (displayName !== undefined) update.displayName = displayName || null;
+  if (location !== undefined) update.location = location || null;
+  if (phone !== undefined) update.phone = phone || null;
   const [user] = await db.update(usersTable).set(update).where(eq(usersTable.id, id)).returning();
   if (!user) {
     res.status(404).json({ error: "Topilmadi" });
     return;
   }
+  res.json(formatUser(user));
+});
+
+router.put("/me/profile", requireAuth, async (req, res) => {
+  const id = req.session!.userId!;
+  const { displayName, location, phone } = req.body;
+  const update: Record<string, unknown> = {};
+  if (displayName !== undefined) update.displayName = displayName || null;
+  if (location !== undefined) update.location = location || null;
+  if (phone !== undefined) update.phone = phone || null;
+  const [user] = await db.update(usersTable).set(update).where(eq(usersTable.id, id)).returning();
+  if (!user) { res.status(404).json({ error: "Topilmadi" }); return; }
   res.json(formatUser(user));
 });
 
