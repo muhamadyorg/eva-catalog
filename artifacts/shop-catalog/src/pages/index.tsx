@@ -853,15 +853,9 @@ export default function CatalogBrowser() {
               <Label>Nom</Label>
               <Input value={newProductName} onChange={(e) => setNewProductName(e.target.value)} placeholder="Mahsulot nomi" data-testid="input-product-name" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Narxi (so'm)</Label>
-                <Input type="number" min="0" step="100" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" data-testid="input-product-price" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mahsulot ID</Label>
-                <Input value={newProductId} onChange={(e) => setNewProductId(e.target.value)} placeholder="SKU-001" />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Narxi (so'm)</Label>
+              <Input type="number" min="0" step="100" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" data-testid="input-product-price" />
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -922,7 +916,6 @@ export default function CatalogBrowser() {
         <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Mahsulotni tahrirlash</DialogTitle>
-            <DialogDescription>ID: {editProduct?.productId}</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
             <MultiImageUpload images={editProductImages} onChange={setEditProductImages} />
@@ -930,15 +923,9 @@ export default function CatalogBrowser() {
               <Label>Nom</Label>
               <Input value={editProductName} onChange={(e) => setEditProductName(e.target.value)} data-testid="input-edit-product-name" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label>Narxi (so'm)</Label>
-                <Input type="number" min="0" step="100" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} data-testid="input-edit-product-price" />
-              </div>
-              <div className="space-y-1.5">
-                <Label>Mahsulot ID</Label>
-                <Input value={editProductCustomId} onChange={(e) => setEditProductCustomId(e.target.value)} />
-              </div>
+            <div className="space-y-1.5">
+              <Label>Narxi (so'm)</Label>
+              <Input type="number" min="0" step="100" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} data-testid="input-edit-product-price" />
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">

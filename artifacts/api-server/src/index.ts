@@ -2,6 +2,7 @@ import { createServer } from "http";
 import app from "./app.js";
 import { logger } from "./lib/logger.js";
 import { setupWebSocket } from "./lib/ws.js";
+import { pool } from "@workspace/db";
 
 const rawPort = process.env["PORT"];
 
@@ -15,13 +16,37 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-const server = createServer(app);
-setupWebSocket(server);
-
-server.listen(port, (err?: Error) => {
-  if (err) {
-    logger.error({ err }, "Error listening on port");
-    process.exit(1);
+async function ensureSessionTable() {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS "session" (
+        "sid" varchar NOT NULL COLLATE "default",
+        "sess" json NOT NULL,
+        "expire" timestamp(6) NOT NULL,
+        CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE
+      ) WITH (OIDS=FALSE);
+      CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
+    `);
+    logger.info("Session table ensured");
+  } catch (err) {
+    logger.error({ err }, "Failed to ensure session table");
+  } finally {
+    client.release();
   }
-  logger.info({ port }, "Server listening");
-});
+}
+
+async function start() {
+  await ensureSessionTable();
+  const server = createServer(app);
+  setupWebSocket(server);
+  server.listen(port, (err?: Error) => {
+    if (err) {
+      logger.error({ err }, "Error listening on port");
+      process.exit(1);
+    }
+    logger.info({ port }, "Server listening");
+  });
+}
+
+start();
