@@ -882,26 +882,27 @@ export default function CatalogBrowser() {
               <Input type="number" min="0" step="100" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" data-testid="input-product-price" />
             </div>
             <div className="space-y-1.5">
-              <Label>Razmer diapazoni</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="0"
-                  value={newProductSizeFrom}
-                  onChange={(e) => setNewProductSizeFrom(e.target.value)}
-                  placeholder="dan (mas. 23)"
-                  className="flex-1"
-                />
-                <span className="text-muted-foreground text-sm shrink-0">—</span>
-                <Input
-                  type="number"
-                  min="0"
-                  value={newProductSizeTo}
-                  onChange={(e) => setNewProductSizeTo(e.target.value)}
-                  placeholder="gacha (ixtiyoriy)"
-                  className="flex-1"
-                />
-              </div>
+              <Label>Razmer</Label>
+              <Input
+                type="number"
+                min="0"
+                value={newProductSizeFrom}
+                onChange={(e) => { setNewProductSizeFrom(e.target.value); if (!e.target.value) setNewProductSizeTo(""); }}
+                placeholder="Razmer kiriting (mas. 23)"
+              />
+              {newProductSizeFrom && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground shrink-0">Yuqori chegara (ixtiyoriy):</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={newProductSizeTo}
+                    onChange={(e) => setNewProductSizeTo(e.target.value)}
+                    placeholder={`${newProductSizeFrom} dan katta`}
+                    className="flex-1"
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -976,26 +977,27 @@ export default function CatalogBrowser() {
               <Input type="number" min="0" step="100" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} data-testid="input-edit-product-price" />
             </div>
             <div className="space-y-1.5">
-              <Label>Razmer diapazoni</Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  type="number"
-                  min="0"
-                  value={editProductSizeFrom}
-                  onChange={(e) => setEditProductSizeFrom(e.target.value)}
-                  placeholder="dan (mas. 23)"
-                  className="flex-1"
-                />
-                <span className="text-muted-foreground text-sm shrink-0">—</span>
-                <Input
-                  type="number"
-                  min="0"
-                  value={editProductSizeTo}
-                  onChange={(e) => setEditProductSizeTo(e.target.value)}
-                  placeholder="gacha (ixtiyoriy)"
-                  className="flex-1"
-                />
-              </div>
+              <Label>Razmer</Label>
+              <Input
+                type="number"
+                min="0"
+                value={editProductSizeFrom}
+                onChange={(e) => { setEditProductSizeFrom(e.target.value); if (!e.target.value) setEditProductSizeTo(""); }}
+                placeholder="Razmer kiriting (mas. 23)"
+              />
+              {editProductSizeFrom && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground shrink-0">Yuqori chegara (ixtiyoriy):</span>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={editProductSizeTo}
+                    onChange={(e) => setEditProductSizeTo(e.target.value)}
+                    placeholder={`${editProductSizeFrom} dan katta`}
+                    className="flex-1"
+                  />
+                </div>
+              )}
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
