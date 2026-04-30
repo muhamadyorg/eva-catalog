@@ -701,35 +701,35 @@ export default function CatalogBrowser() {
                     setViewProduct(isViewing ? null : product);
                   }}
                 >
-                  {/* Rasm — chap */}
-                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-secondary/40 flex items-center justify-center overflow-hidden">
+                  {/* Rasm — chap, katalog kartasi balandligida */}
+                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0 bg-secondary/40 flex items-center justify-center overflow-hidden">
                     {thumb ? (
                       <img src={thumb} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Package className="h-8 w-8 text-muted-foreground/40" />
+                      <Package className="h-12 w-12 text-muted-foreground/40" />
                     )}
                     {allImages.length > 1 && (
-                      <div className="absolute top-1 left-1">
-                        <Badge className="text-[9px] px-1 py-0 h-3.5 bg-black/60 text-white border-0 pointer-events-none">
-                          {allImages.length}🖼
+                      <div className="absolute top-1.5 left-1.5">
+                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-black/60 text-white border-0 pointer-events-none">
+                          {allImages.length} 🖼
                         </Badge>
                       </div>
                     )}
                     {isAdmin && (
-                      <div data-stop className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div data-stop className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleProductSelection(product.id)}
-                          className="bg-background/80 border-white/50 data-[state=checked]:bg-primary h-3.5 w-3.5"
+                          className="bg-background/80 border-white/50 data-[state=checked]:bg-primary"
                         />
                       </div>
                     )}
                   </div>
 
                   {/* Ma'lumotlar — o'ng */}
-                  <CardContent className="flex-1 p-2 flex flex-col justify-center min-w-0 gap-0.5">
-                    <p className="font-medium text-sm leading-tight line-clamp-2" title={product.name}>{product.name}</p>
-                    <p className="text-sm text-primary font-semibold">{Number(product.price).toLocaleString()} so'm</p>
+                  <CardContent className="flex-1 p-3 flex flex-col justify-center min-w-0 gap-1">
+                    <p className="font-medium text-base leading-tight line-clamp-3" title={product.name}>{product.name}</p>
+                    <p className="text-base text-primary font-bold">{Number(product.price).toLocaleString()} so'm</p>
                     {colors.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
                         {colors.slice(0, 3).map((c) => (
