@@ -621,14 +621,15 @@ export default function CatalogBrowser() {
       {/* Grid + Panel layout */}
       <div className={`transition-all duration-300 ${panelOpen ? "lg:pr-[396px] xl:pr-[436px]" : ""}`}>
         {isLoading ? (
-          <div className={`grid ${getSizeClasses()}`}>
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="aspect-square rounded-xl bg-secondary/50 animate-pulse" />
+          <div className="grid grid-cols-1 gap-2">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-20 rounded-xl bg-secondary/50 animate-pulse" />
             ))}
           </div>
         ) : (
-          <div className={`grid ${getSizeClasses()}`}>
+          <div>
             {/* Catalogs */}
+            <div className={`grid ${getSizeClasses()} mb-2`}>
             {hasCatalogs && catalogs!.map((catalog) => (
               <Card
                 key={catalog.id}
@@ -678,9 +679,12 @@ export default function CatalogBrowser() {
                 </CardContent>
               </Card>
             ))}
+            </div>
 
-            {/* Products */}
-            {hasProducts && products!.map((product) => {
+            {/* Products — gorizontal karta */}
+            {hasProducts && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {products!.map((product) => {
               const colors = (product.attributes as Attr[]).filter((a) => a.key === "Rang").map((a) => a.value);
               const allImages = [...(product.images as string[] ?? []), product.imageUrl].filter(Boolean) as string[];
               const thumb = allImages[0] ?? null;
@@ -691,84 +695,91 @@ export default function CatalogBrowser() {
                 <Card
                   key={product.id}
                   data-testid={`card-product-${product.id}`}
-                  className={`group overflow-hidden cursor-pointer hover:border-primary/60 transition-all hover:shadow-md ${isSelected ? "border-primary ring-1 ring-primary" : ""} ${isViewing ? "border-primary/60 bg-primary/5" : ""}`}
+                  className={`group overflow-hidden cursor-pointer hover:border-primary/60 transition-all hover:shadow-md flex flex-row ${isSelected ? "border-primary ring-1 ring-primary" : ""} ${isViewing ? "border-primary/60 bg-primary/5" : ""}`}
                   onClick={(e) => {
                     if ((e.target as HTMLElement).closest("[data-stop]")) return;
                     setViewProduct(isViewing ? null : product);
                   }}
                 >
-                  <div className="relative aspect-square bg-secondary/40 flex items-center justify-center overflow-hidden">
+                  {/* Rasm — chap */}
+                  <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 bg-secondary/40 flex items-center justify-center overflow-hidden">
                     {thumb ? (
                       <img src={thumb} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
-                      <Package className={`text-muted-foreground/40 ${viewSize === "small" ? "h-8 w-8" : viewSize === "medium" ? "h-10 w-10" : "h-14 w-14"}`} />
+                      <Package className="h-8 w-8 text-muted-foreground/40" />
                     )}
                     {allImages.length > 1 && (
-                      <div className="absolute top-1.5 left-1.5">
-                        <Badge className="text-[9px] px-1.5 py-0 h-4 bg-black/60 text-white border-0 pointer-events-none">
-                          {allImages.length} 🖼
+                      <div className="absolute top-1 left-1">
+                        <Badge className="text-[9px] px-1 py-0 h-3.5 bg-black/60 text-white border-0 pointer-events-none">
+                          {allImages.length}🖼
                         </Badge>
                       </div>
                     )}
-                    {canManage && (
-                      <div data-stop className="absolute top-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="secondary" size="icon" className="h-7 w-7 shadow-md">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => openEditProduct(product)}>
-                              <Edit className="h-4 w-4 mr-2" /> Tahrirlash
-                            </DropdownMenuItem>
-                            {isAdmin && (
-                              <DropdownMenuItem
-                                className="text-destructive focus:bg-destructive/10"
-                                onClick={() => {
-                                  if (confirm(`"${product.name}" mahsulotini o'chirasizmi?`)) {
-                                    deleteProduct.mutate({ id: product.id });
-                                  }
-                                }}
-                              >
-                                <Trash className="h-4 w-4 mr-2" /> O'chirish
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
                     {isAdmin && (
-                      <div data-stop className="absolute bottom-1.5 right-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div data-stop className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Checkbox
                           checked={isSelected}
                           onCheckedChange={() => toggleProductSelection(product.id)}
-                          className="bg-background/80 border-white/50 data-[state=checked]:bg-primary"
+                          className="bg-background/80 border-white/50 data-[state=checked]:bg-primary h-3.5 w-3.5"
                         />
                       </div>
                     )}
+                  </div>
+
+                  {/* Ma'lumotlar — o'ng */}
+                  <CardContent className="flex-1 p-2 flex flex-col justify-center min-w-0 gap-0.5">
+                    <p className="font-medium text-sm leading-tight line-clamp-2" title={product.name}>{product.name}</p>
+                    <p className="text-sm text-primary font-semibold">{Number(product.price).toLocaleString()} so'm</p>
                     {colors.length > 0 && (
-                      <div className="absolute bottom-1.5 left-1.5 flex gap-1">
+                      <div className="flex gap-1 flex-wrap">
                         {colors.slice(0, 3).map((c) => (
-                          <Badge key={c} variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-black/50 text-white border-0">{c}</Badge>
+                          <Badge key={c} variant="secondary" className="text-[9px] px-1.5 py-0 h-4">{c}</Badge>
                         ))}
                         {colors.length > 3 && (
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4 bg-black/50 text-white border-0">+{colors.length - 3}</Badge>
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">+{colors.length - 3}</Badge>
                         )}
                       </div>
                     )}
-                  </div>
-                  <CardContent className="p-2">
-                    <p className="font-medium truncate text-sm" title={product.name}>{product.name}</p>
-                    <p className="text-xs text-primary font-semibold">{Number(product.price).toLocaleString()} so'm</p>
                   </CardContent>
+
+                  {/* Admin tugmalari */}
+                  {canManage && (
+                    <div data-stop className="flex items-center pr-1">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openEditProduct(product)}>
+                            <Edit className="h-4 w-4 mr-2" /> Tahrirlash
+                          </DropdownMenuItem>
+                          {isAdmin && (
+                            <DropdownMenuItem
+                              className="text-destructive focus:bg-destructive/10"
+                              onClick={() => {
+                                if (confirm(`"${product.name}" mahsulotini o'chirasizmi?`)) {
+                                  deleteProduct.mutate({ id: product.id });
+                                }
+                              }}
+                            >
+                              <Trash className="h-4 w-4 mr-2" /> O'chirish
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  )}
                 </Card>
               );
             })}
+              </div>
+            )}
 
             {/* Empty state */}
             {!hasCatalogs && !hasProducts && (
-              <div className="col-span-full py-16 flex flex-col items-center justify-center text-center gap-4">
+              <div className="py-16 flex flex-col items-center justify-center text-center gap-4">
                 <div className="h-16 w-16 bg-secondary rounded-full flex items-center justify-center">
                   <PackageSearch className="h-8 w-8 text-muted-foreground" />
                 </div>
