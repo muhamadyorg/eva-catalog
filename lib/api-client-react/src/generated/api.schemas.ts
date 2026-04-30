@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Shop Catalog API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 export interface HealthStatus {
   status: string;
@@ -23,6 +23,7 @@ export type UserPublicRole =
 
 export const UserPublicRole = {
   admin: "admin",
+  manager: "manager",
   user: "user",
 } as const;
 
@@ -30,6 +31,8 @@ export interface UserPublic {
   id: number;
   username: string;
   role: UserPublicRole;
+  isBlocked: boolean;
+  hasActiveSession: boolean;
   createdAt: string;
 }
 
@@ -47,6 +50,7 @@ export type CreateUserBodyRole =
 
 export const CreateUserBodyRole = {
   admin: "admin",
+  manager: "manager",
   user: "user",
 } as const;
 
@@ -61,6 +65,7 @@ export type UpdateUserBodyRole =
 
 export const UpdateUserBodyRole = {
   admin: "admin",
+  manager: "manager",
   user: "user",
 } as const;
 
@@ -68,6 +73,10 @@ export interface UpdateUserBody {
   username?: string;
   password?: string;
   role?: UpdateUserBodyRole;
+}
+
+export interface BlockUserBody {
+  isBlocked: boolean;
 }
 
 export interface Catalog {
@@ -115,6 +124,7 @@ export interface Product {
   price: number;
   catalogId: number;
   imageUrl?: string | null;
+  images: string[];
   attributes: ProductAttribute[];
   createdAt: string;
   updatedAt: string;
@@ -125,6 +135,7 @@ export interface CreateProductBody {
   price: number;
   catalogId: number;
   imageUrl?: string | null;
+  images?: string[];
   attributes?: ProductAttribute[];
   productId?: string;
 }
@@ -133,6 +144,7 @@ export interface UpdateProductBody {
   name?: string;
   price?: number;
   imageUrl?: string | null;
+  images?: string[];
   attributes?: ProductAttribute[];
   productId?: string;
 }
@@ -150,10 +162,72 @@ export interface BulkMoveBody {
   newCatalogId: number;
 }
 
+export interface CartItemFull {
+  id: number;
+  productId: number;
+  quantity: number;
+  selectedColor?: string | null;
+  product: Product;
+  createdAt: string;
+}
+
+export interface AddToCartBody {
+  productId: number;
+  quantity: number;
+  selectedColor?: string | null;
+}
+
+export interface UpdateCartItemBody {
+  quantity?: number;
+  selectedColor?: string | null;
+}
+
+export interface OrderItem {
+  productId: number;
+  productName: string;
+  productCode: string;
+  quantity: number;
+  selectedColor?: string | null;
+  price: number;
+  imageUrl?: string | null;
+}
+
+export interface Order {
+  id: number;
+  userId?: number | null;
+  guestName?: string | null;
+  guestPhone?: string | null;
+  items: OrderItem[];
+  totalPrice?: number | null;
+  status: string;
+  notes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PlaceOrderBody {
+  guestName?: string;
+  guestPhone?: string;
+  notes?: string;
+}
+
+export interface UpdateOrderStatusBody {
+  status: string;
+  notes?: string;
+}
+
 export type ListCatalogsParams = {
   parentId?: number | null;
 };
 
 export type ListProductsParams = {
   catalogId: number;
+};
+
+export type ForceLogoutUser200 = {
+  ok: boolean;
+};
+
+export type ListOrdersParams = {
+  status?: string;
 };

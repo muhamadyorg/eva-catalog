@@ -23,11 +23,15 @@ Ierarxik onlayn katalog boshqaruv tizimi. Admin ilovasi va foydalanuvchi ko'rish
 ## Features
 
 - Ierarxik kataloglar (cheksiz ichma-ich papkalar)
-- Mahsulotlar: product_id, nom, narx, rasm, dinamik atributlar
-- Admin: katalog/mahsulot yaratish, tahrirlash, ko'chirish, o'chirish
-- Bulk select va delete/move
+- Mahsulotlar: product_id, nom, narx, **ko'p rasm** (multi-image gallery), dinamik atributlar, ranglar
+- **ProductPanel**: Desktop (right panel) + Mobile (bottom sheet) — swipeable image gallery, thumbnails
+- **Savat (Cart)**: foydalanuvchi savatga qo'shish, rang/miqdor tanlash, buyurtma berish
+- **Buyurtmalar (Orders)**: admin/menejer uchun buyurtma holati boshqaruvi
+- **Menejer roli**: mahsulot qo'shish/tahrirlash huquqi (katalog yaratmaydi)
+- **Yagona sessiya**: login bo'lganda eski sessiya uzilib, faqat yangi qurilma ishlaydi
+- **Foydalanuvchi bloklash**: admin foydalanuvchini bloklashi yoki tizimdan majburiy chiqarishi mumkin
+- Admin: katalog/mahsulot yaratish, tahrirlash, o'chirish; bulk delete
 - 3 xil ko'rinish hajmi (kichik/o'rta/katta)
-- Foydalanuvchi boshqaruvi (admin/user rollari)
 - Dark mode default (toggle mavjud)
 - Real-time yangilanishlar (WebSocket)
 - PWA qo'llab-quvvatlash

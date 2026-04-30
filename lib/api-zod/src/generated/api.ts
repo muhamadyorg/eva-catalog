@@ -3,7 +3,7 @@
  * Do not edit manually.
  * Api
  * Shop Catalog API
- * OpenAPI spec version: 0.1.0
+ * OpenAPI spec version: 0.2.0
  */
 import * as zod from "zod";
 
@@ -26,7 +26,9 @@ export const LoginResponse = zod.object({
   user: zod.object({
     id: zod.number(),
     username: zod.string(),
-    role: zod.enum(["admin", "user"]),
+    role: zod.enum(["admin", "manager", "user"]),
+    isBlocked: zod.boolean(),
+    hasActiveSession: zod.boolean(),
     createdAt: zod.coerce.date(),
   }),
 });
@@ -37,7 +39,9 @@ export const LoginResponse = zod.object({
 export const GetMeResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
-  role: zod.enum(["admin", "user"]),
+  role: zod.enum(["admin", "manager", "user"]),
+  isBlocked: zod.boolean(),
+  hasActiveSession: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -178,6 +182,7 @@ export const ListProductsResponseItem = zod.object({
   price: zod.number(),
   catalogId: zod.number(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()),
   attributes: zod.array(
     zod.object({
       key: zod.string(),
@@ -197,6 +202,7 @@ export const CreateProductBody = zod.object({
   price: zod.number(),
   catalogId: zod.number(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()).optional(),
   attributes: zod
     .array(
       zod.object({
@@ -222,6 +228,7 @@ export const GetProductResponse = zod.object({
   price: zod.number(),
   catalogId: zod.number(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()),
   attributes: zod.array(
     zod.object({
       key: zod.string(),
@@ -243,6 +250,7 @@ export const UpdateProductBody = zod.object({
   name: zod.string().optional(),
   price: zod.number().optional(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()).optional(),
   attributes: zod
     .array(
       zod.object({
@@ -261,6 +269,7 @@ export const UpdateProductResponse = zod.object({
   price: zod.number(),
   catalogId: zod.number(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()),
   attributes: zod.array(
     zod.object({
       key: zod.string(),
@@ -296,6 +305,7 @@ export const MoveProductResponse = zod.object({
   price: zod.number(),
   catalogId: zod.number(),
   imageUrl: zod.string().nullish(),
+  images: zod.array(zod.string()),
   attributes: zod.array(
     zod.object({
       key: zod.string(),
@@ -333,7 +343,9 @@ export const ListAttributesResponse = zod.array(ListAttributesResponseItem);
 export const ListUsersResponseItem = zod.object({
   id: zod.number(),
   username: zod.string(),
-  role: zod.enum(["admin", "user"]),
+  role: zod.enum(["admin", "manager", "user"]),
+  isBlocked: zod.boolean(),
+  hasActiveSession: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 export const ListUsersResponse = zod.array(ListUsersResponseItem);
@@ -344,7 +356,7 @@ export const ListUsersResponse = zod.array(ListUsersResponseItem);
 export const CreateUserBody = zod.object({
   username: zod.string(),
   password: zod.string(),
-  role: zod.enum(["admin", "user"]),
+  role: zod.enum(["admin", "manager", "user"]),
 });
 
 /**
@@ -357,13 +369,15 @@ export const UpdateUserParams = zod.object({
 export const UpdateUserBody = zod.object({
   username: zod.string().optional(),
   password: zod.string().optional(),
-  role: zod.enum(["admin", "user"]).optional(),
+  role: zod.enum(["admin", "manager", "user"]).optional(),
 });
 
 export const UpdateUserResponse = zod.object({
   id: zod.number(),
   username: zod.string(),
-  role: zod.enum(["admin", "user"]),
+  role: zod.enum(["admin", "manager", "user"]),
+  isBlocked: zod.boolean(),
+  hasActiveSession: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
 
@@ -372,4 +386,219 @@ export const UpdateUserResponse = zod.object({
  */
 export const DeleteUserParams = zod.object({
   id: zod.coerce.number(),
+});
+
+/**
+ * @summary Block or unblock user (admin only)
+ */
+export const BlockUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const BlockUserBody = zod.object({
+  isBlocked: zod.boolean(),
+});
+
+export const BlockUserResponse = zod.object({
+  id: zod.number(),
+  username: zod.string(),
+  role: zod.enum(["admin", "manager", "user"]),
+  isBlocked: zod.boolean(),
+  hasActiveSession: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Force logout a user (admin only)
+ */
+export const ForceLogoutUserParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ForceLogoutUserResponse = zod.object({
+  ok: zod.boolean(),
+});
+
+/**
+ * @summary Get current user cart
+ */
+export const GetCartResponseItem = zod.object({
+  id: zod.number(),
+  productId: zod.number(),
+  quantity: zod.number(),
+  selectedColor: zod.string().nullish(),
+  product: zod.object({
+    id: zod.number(),
+    productId: zod.string(),
+    name: zod.string(),
+    price: zod.number(),
+    catalogId: zod.number(),
+    imageUrl: zod.string().nullish(),
+    images: zod.array(zod.string()),
+    attributes: zod.array(
+      zod.object({
+        key: zod.string(),
+        value: zod.string(),
+      }),
+    ),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  createdAt: zod.coerce.date(),
+});
+export const GetCartResponse = zod.array(GetCartResponseItem);
+
+/**
+ * @summary Add product to cart
+ */
+export const AddToCartBody = zod.object({
+  productId: zod.number(),
+  quantity: zod.number(),
+  selectedColor: zod.string().nullish(),
+});
+
+/**
+ * @summary Update cart item quantity or color
+ */
+export const UpdateCartItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateCartItemBody = zod.object({
+  quantity: zod.number().optional(),
+  selectedColor: zod.string().nullish(),
+});
+
+export const UpdateCartItemResponse = zod.object({
+  id: zod.number(),
+  productId: zod.number(),
+  quantity: zod.number(),
+  selectedColor: zod.string().nullish(),
+  product: zod.object({
+    id: zod.number(),
+    productId: zod.string(),
+    name: zod.string(),
+    price: zod.number(),
+    catalogId: zod.number(),
+    imageUrl: zod.string().nullish(),
+    images: zod.array(zod.string()),
+    attributes: zod.array(
+      zod.object({
+        key: zod.string(),
+        value: zod.string(),
+      }),
+    ),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Remove item from cart
+ */
+export const RemoveFromCartParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Place an order
+ */
+export const PlaceOrderBody = zod.object({
+  guestName: zod.string().optional(),
+  guestPhone: zod.string().optional(),
+  notes: zod.string().optional(),
+});
+
+/**
+ * @summary List all orders (admin/manager)
+ */
+export const ListOrdersQueryParams = zod.object({
+  status: zod.coerce.string().optional(),
+});
+
+export const ListOrdersResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number().nullish(),
+  guestName: zod.string().nullish(),
+  guestPhone: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      productId: zod.number(),
+      productName: zod.string(),
+      productCode: zod.string(),
+      quantity: zod.number(),
+      selectedColor: zod.string().nullish(),
+      price: zod.number(),
+      imageUrl: zod.string().nullish(),
+    }),
+  ),
+  totalPrice: zod.number().nullish(),
+  status: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListOrdersResponse = zod.array(ListOrdersResponseItem);
+
+/**
+ * @summary List current user orders
+ */
+export const ListMyOrdersResponseItem = zod.object({
+  id: zod.number(),
+  userId: zod.number().nullish(),
+  guestName: zod.string().nullish(),
+  guestPhone: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      productId: zod.number(),
+      productName: zod.string(),
+      productCode: zod.string(),
+      quantity: zod.number(),
+      selectedColor: zod.string().nullish(),
+      price: zod.number(),
+      imageUrl: zod.string().nullish(),
+    }),
+  ),
+  totalPrice: zod.number().nullish(),
+  status: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListMyOrdersResponse = zod.array(ListMyOrdersResponseItem);
+
+/**
+ * @summary Update order status (admin/manager)
+ */
+export const UpdateOrderStatusParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrderStatusBody = zod.object({
+  status: zod.string(),
+  notes: zod.string().optional(),
+});
+
+export const UpdateOrderStatusResponse = zod.object({
+  id: zod.number(),
+  userId: zod.number().nullish(),
+  guestName: zod.string().nullish(),
+  guestPhone: zod.string().nullish(),
+  items: zod.array(
+    zod.object({
+      productId: zod.number(),
+      productName: zod.string(),
+      productCode: zod.string(),
+      quantity: zod.number(),
+      selectedColor: zod.string().nullish(),
+      price: zod.number(),
+      imageUrl: zod.string().nullish(),
+    }),
+  ),
+  totalPrice: zod.number().nullish(),
+  status: zod.string(),
+  notes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
 });

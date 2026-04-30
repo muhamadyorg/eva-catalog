@@ -24,8 +24,8 @@ export default function Login() {
       },
       onError: (error) => {
         toast({
-          title: "Login failed",
-          description: error.error || "Invalid username or password",
+          title: "Xato",
+          description: (error as { error?: string }).error || "Login yoki parol noto'g'ri",
           variant: "destructive",
         });
       },

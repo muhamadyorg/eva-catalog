@@ -13,12 +13,15 @@ import usersRouter from "./routes/users.js";
 import attributesRouter from "./routes/attributes.js";
 import uploadsRouter, { UPLOADS_DIR } from "./routes/uploads.js";
 import backupRouter from "./routes/backup.js";
+import cartRouter from "./routes/cart.js";
+import ordersRouter from "./routes/orders.js";
+import { checkSession } from "./middlewares/auth.js";
 import { logger } from "./lib/logger.js";
 
 declare module "express-session" {
   interface SessionData {
     userId?: number;
-    role?: "admin" | "user";
+    role?: "admin" | "manager" | "user";
   }
 }
 
@@ -29,27 +32,16 @@ app.use(
     logger,
     serializers: {
       req(req) {
-        return {
-          id: req.id,
-          method: req.method,
-          url: req.url?.split("?")[0],
-        };
+        return { id: req.id, method: req.method, url: req.url?.split("?")[0] };
       },
       res(res) {
-        return {
-          statusCode: res.statusCode,
-        };
+        return { statusCode: res.statusCode };
       },
     },
   }),
 );
 
-app.use(
-  cors({
-    origin: true,
-    credentials: true,
-  }),
-);
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
@@ -66,6 +58,8 @@ app.use(
   }),
 );
 
+app.use(checkSession);
+
 app.use("/api", router);
 app.use("/api/auth", authRouter);
 app.use("/api/catalogs", catalogsRouter);
@@ -75,5 +69,7 @@ app.use("/api/attributes", attributesRouter);
 app.use("/api/uploads", uploadsRouter);
 app.use("/api/uploads", express.static(UPLOADS_DIR));
 app.use("/api/backup", backupRouter);
+app.use("/api/cart", cartRouter);
+app.use("/api/orders", ordersRouter);
 
 export default app;

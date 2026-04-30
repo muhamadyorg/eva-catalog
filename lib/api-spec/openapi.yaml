@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Api
-  version: 0.1.0
+  version: 0.2.0
   description: Shop Catalog API
 servers:
   - url: /api
@@ -12,6 +12,8 @@ tags:
   - name: catalogs
   - name: products
   - name: users
+  - name: cart
+  - name: orders
 paths:
   /healthz:
     get:
@@ -46,6 +48,12 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Account blocked
           content:
             application/json:
               schema:
@@ -462,6 +470,208 @@ paths:
         "204":
           description: Deleted
 
+  /users/{id}/block:
+    post:
+      operationId: blockUser
+      tags: [users]
+      summary: Block or unblock user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BlockUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserPublic"
+
+  /users/{id}/force-logout:
+    post:
+      operationId: forceLogoutUser
+      tags: [users]
+      summary: Force logout a user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: User logged out
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                required: [ok]
+
+  /cart:
+    get:
+      operationId: getCart
+      tags: [cart]
+      summary: Get current user cart
+      responses:
+        "200":
+          description: Cart items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CartItemFull"
+    post:
+      operationId: addToCart
+      tags: [cart]
+      summary: Add product to cart
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddToCartBody"
+      responses:
+        "201":
+          description: Added to cart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItemFull"
+    delete:
+      operationId: clearCart
+      tags: [cart]
+      summary: Clear entire cart
+      responses:
+        "204":
+          description: Cleared
+
+  /cart/{id}:
+    put:
+      operationId: updateCartItem
+      tags: [cart]
+      summary: Update cart item quantity or color
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateCartItemBody"
+      responses:
+        "200":
+          description: Updated cart item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CartItemFull"
+    delete:
+      operationId: removeFromCart
+      tags: [cart]
+      summary: Remove item from cart
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
+  /orders:
+    post:
+      operationId: placeOrder
+      tags: [orders]
+      summary: Place an order
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaceOrderBody"
+      responses:
+        "201":
+          description: Order placed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+    get:
+      operationId: listOrders
+      tags: [orders]
+      summary: List all orders (admin/manager)
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /orders/my:
+    get:
+      operationId: listMyOrders
+      tags: [orders]
+      summary: List current user orders
+      responses:
+        "200":
+          description: My orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /orders/{id}/status:
+    put:
+      operationId: updateOrderStatus
+      tags: [orders]
+      summary: Update order status (admin/manager)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusBody"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
 components:
   schemas:
     HealthStatus:
@@ -512,11 +722,15 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, user]
+          enum: [admin, manager, user]
+        isBlocked:
+          type: boolean
+        hasActiveSession:
+          type: boolean
         createdAt:
           type: string
           format: date-time
-      required: [id, username, role, createdAt]
+      required: [id, username, role, isBlocked, hasActiveSession, createdAt]
 
     CreateUserBody:
       type: object
@@ -527,7 +741,7 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, user]
+          enum: [admin, manager, user]
       required: [username, password, role]
 
     UpdateUserBody:
@@ -539,7 +753,14 @@ components:
           type: string
         role:
           type: string
-          enum: [admin, user]
+          enum: [admin, manager, user]
+
+    BlockUserBody:
+      type: object
+      properties:
+        isBlocked:
+          type: boolean
+      required: [isBlocked]
 
     Catalog:
       type: object
@@ -633,6 +854,10 @@ components:
         imageUrl:
           type: string
           nullable: true
+        images:
+          type: array
+          items:
+            type: string
         attributes:
           type: array
           items:
@@ -643,7 +868,7 @@ components:
         updatedAt:
           type: string
           format: date-time
-      required: [id, productId, name, price, catalogId, attributes, createdAt, updatedAt]
+      required: [id, productId, name, price, catalogId, images, attributes, createdAt, updatedAt]
 
     CreateProductBody:
       type: object
@@ -657,6 +882,10 @@ components:
         imageUrl:
           type: string
           nullable: true
+        images:
+          type: array
+          items:
+            type: string
         attributes:
           type: array
           items:
@@ -675,6 +904,10 @@ components:
         imageUrl:
           type: string
           nullable: true
+        images:
+          type: array
+          items:
+            type: string
         attributes:
           type: array
           items:
@@ -709,3 +942,117 @@ components:
           type: integer
       required: [ids, newCatalogId]
 
+    CartItemFull:
+      type: object
+      properties:
+        id:
+          type: integer
+        productId:
+          type: integer
+        quantity:
+          type: integer
+        selectedColor:
+          type: string
+          nullable: true
+        product:
+          $ref: "#/components/schemas/Product"
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, productId, quantity, product, createdAt]
+
+    AddToCartBody:
+      type: object
+      properties:
+        productId:
+          type: integer
+        quantity:
+          type: integer
+        selectedColor:
+          type: string
+          nullable: true
+      required: [productId, quantity]
+
+    UpdateCartItemBody:
+      type: object
+      properties:
+        quantity:
+          type: integer
+        selectedColor:
+          type: string
+          nullable: true
+
+    OrderItem:
+      type: object
+      properties:
+        productId:
+          type: integer
+        productName:
+          type: string
+        productCode:
+          type: string
+        quantity:
+          type: integer
+        selectedColor:
+          type: string
+          nullable: true
+        price:
+          type: number
+        imageUrl:
+          type: string
+          nullable: true
+      required: [productId, productName, productCode, quantity, price]
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        userId:
+          type: integer
+          nullable: true
+        guestName:
+          type: string
+          nullable: true
+        guestPhone:
+          type: string
+          nullable: true
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        totalPrice:
+          type: number
+          nullable: true
+        status:
+          type: string
+        notes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required: [id, items, status, createdAt, updatedAt]
+
+    PlaceOrderBody:
+      type: object
+      properties:
+        guestName:
+          type: string
+        guestPhone:
+          type: string
+        notes:
+          type: string
+      required: []
+
+    UpdateOrderStatusBody:
+      type: object
+      properties:
+        status:
+          type: string
+        notes:
+          type: string
+      required: [status]
