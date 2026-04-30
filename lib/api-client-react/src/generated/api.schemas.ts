@@ -126,6 +126,8 @@ export interface Product {
   imageUrl?: string | null;
   images: string[];
   attributes: ProductAttribute[];
+  sizeFrom?: number | null;
+  sizeTo?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -138,6 +140,8 @@ export interface CreateProductBody {
   images?: string[];
   attributes?: ProductAttribute[];
   productId?: string;
+  sizeFrom?: number | null;
+  sizeTo?: number | null;
 }
 
 export interface UpdateProductBody {
@@ -147,6 +151,8 @@ export interface UpdateProductBody {
   images?: string[];
   attributes?: ProductAttribute[];
   productId?: string;
+  sizeFrom?: number | null;
+  sizeTo?: number | null;
 }
 
 export interface MoveProductBody {

@@ -343,6 +343,8 @@ export default function CatalogBrowser() {
   const [newProductImages, setNewProductImages] = useState<string[]>([]);
   const [newProductAttrs, setNewProductAttrs] = useState<Attr[]>([]);
   const [newProductColors, setNewProductColors] = useState<string[]>([]);
+  const [newProductSizeFrom, setNewProductSizeFrom] = useState("");
+  const [newProductSizeTo, setNewProductSizeTo] = useState("");
 
   // Edit catalog form
   const [editCatalogName, setEditCatalogName] = useState("");
@@ -355,6 +357,8 @@ export default function CatalogBrowser() {
   const [editProductImages, setEditProductImages] = useState<string[]>([]);
   const [editProductAttrs, setEditProductAttrs] = useState<Attr[]>([]);
   const [editProductColors, setEditProductColors] = useState<string[]>([]);
+  const [editProductSizeFrom, setEditProductSizeFrom] = useState("");
+  const [editProductSizeTo, setEditProductSizeTo] = useState("");
 
   const { isAdmin, user } = useAuth();
   const canManage = isAdmin || user?.role === "manager";
@@ -493,6 +497,8 @@ export default function CatalogBrowser() {
     setEditProductImages(allImgs);
     setEditProductAttrs(attrs.filter((a) => a.key !== "Rang"));
     setEditProductColors(attrs.filter((a) => a.key === "Rang").map((a) => a.value));
+    setEditProductSizeFrom(prod.sizeFrom != null ? String(prod.sizeFrom) : "");
+    setEditProductSizeTo(prod.sizeTo != null ? String(prod.sizeTo) : "");
     setViewProduct(null);
   };
 
@@ -517,6 +523,8 @@ export default function CatalogBrowser() {
         imageUrl: editProductImages[0] ?? null,
         images: editProductImages,
         attributes: buildProductAttrs(editProductAttrs, editProductColors),
+        sizeFrom: editProductSizeFrom ? parseInt(editProductSizeFrom) : null,
+        sizeTo: editProductSizeTo ? parseInt(editProductSizeTo) : null,
       },
     });
   };
@@ -730,6 +738,11 @@ export default function CatalogBrowser() {
                   <CardContent className="flex-1 p-3 flex flex-col justify-center min-w-0 gap-1">
                     <p className="font-medium text-base leading-tight line-clamp-3" title={product.name}>{product.name}</p>
                     <p className="text-base text-primary font-bold">{Number(product.price).toLocaleString()} so'm</p>
+                    {product.sizeFrom != null && (
+                      <p className="text-sm text-muted-foreground">
+                        Razmer: {product.sizeFrom}{product.sizeTo != null ? ` — ${product.sizeTo}` : ""}
+                      </p>
+                    )}
                     {colors.length > 0 && (
                       <div className="flex gap-1 flex-wrap">
                         {colors.slice(0, 3).map((c) => (
@@ -851,7 +864,7 @@ export default function CatalogBrowser() {
       {/* CREATE PRODUCT */}
       <Dialog open={createProductOpen} onOpenChange={(o) => {
         setCreateProductOpen(o);
-        if (!o) { setNewProductName(""); setNewProductPrice(""); setNewProductId(""); setNewProductImages([]); setNewProductAttrs([]); setNewProductColors([]); }
+        if (!o) { setNewProductName(""); setNewProductPrice(""); setNewProductId(""); setNewProductImages([]); setNewProductAttrs([]); setNewProductColors([]); setNewProductSizeFrom(""); setNewProductSizeTo(""); }
       }}>
         <DialogContent className="max-w-sm max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -867,6 +880,28 @@ export default function CatalogBrowser() {
             <div className="space-y-1.5">
               <Label>Narxi (so'm)</Label>
               <Input type="number" min="0" step="100" value={newProductPrice} onChange={(e) => setNewProductPrice(e.target.value)} placeholder="0" data-testid="input-product-price" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Razmer diapazoni</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  value={newProductSizeFrom}
+                  onChange={(e) => setNewProductSizeFrom(e.target.value)}
+                  placeholder="dan (mas. 23)"
+                  className="flex-1"
+                />
+                <span className="text-muted-foreground text-sm shrink-0">—</span>
+                <Input
+                  type="number"
+                  min="0"
+                  value={newProductSizeTo}
+                  onChange={(e) => setNewProductSizeTo(e.target.value)}
+                  placeholder="gacha (ixtiyoriy)"
+                  className="flex-1"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -891,6 +926,8 @@ export default function CatalogBrowser() {
                   images: newProductImages,
                   productId: newProductId || undefined,
                   attributes: buildProductAttrs(newProductAttrs, newProductColors),
+                  sizeFrom: newProductSizeFrom ? parseInt(newProductSizeFrom) : null,
+                  sizeTo: newProductSizeTo ? parseInt(newProductSizeTo) : null,
                 },
               })}
             >
@@ -937,6 +974,28 @@ export default function CatalogBrowser() {
             <div className="space-y-1.5">
               <Label>Narxi (so'm)</Label>
               <Input type="number" min="0" step="100" value={editProductPrice} onChange={(e) => setEditProductPrice(e.target.value)} data-testid="input-edit-product-price" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Razmer diapazoni</Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="0"
+                  value={editProductSizeFrom}
+                  onChange={(e) => setEditProductSizeFrom(e.target.value)}
+                  placeholder="dan (mas. 23)"
+                  className="flex-1"
+                />
+                <span className="text-muted-foreground text-sm shrink-0">—</span>
+                <Input
+                  type="number"
+                  min="0"
+                  value={editProductSizeTo}
+                  onChange={(e) => setEditProductSizeTo(e.target.value)}
+                  placeholder="gacha (ixtiyoriy)"
+                  className="flex-1"
+                />
+              </div>
             </div>
             <div className="space-y-2">
               <div className="flex items-center gap-2">

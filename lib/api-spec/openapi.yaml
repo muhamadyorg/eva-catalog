@@ -862,6 +862,12 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductAttribute"
+        sizeFrom:
+          type: integer
+          nullable: true
+        sizeTo:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -892,6 +898,12 @@ components:
             $ref: "#/components/schemas/ProductAttribute"
         productId:
           type: string
+        sizeFrom:
+          type: integer
+          nullable: true
+        sizeTo:
+          type: integer
+          nullable: true
       required: [name, price, catalogId]
 
     UpdateProductBody:
@@ -914,6 +926,12 @@ components:
             $ref: "#/components/schemas/ProductAttribute"
         productId:
           type: string
+        sizeFrom:
+          type: integer
+          nullable: true
+        sizeTo:
+          type: integer
+          nullable: true
 
     MoveProductBody:
       type: object

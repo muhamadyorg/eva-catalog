@@ -189,6 +189,8 @@ export const ListProductsResponseItem = zod.object({
       value: zod.string(),
     }),
   ),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -212,6 +214,8 @@ export const CreateProductBody = zod.object({
     )
     .optional(),
   productId: zod.string().optional(),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
 });
 
 /**
@@ -235,6 +239,8 @@ export const GetProductResponse = zod.object({
       value: zod.string(),
     }),
   ),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -260,6 +266,8 @@ export const UpdateProductBody = zod.object({
     )
     .optional(),
   productId: zod.string().optional(),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
 });
 
 export const UpdateProductResponse = zod.object({
@@ -276,6 +284,8 @@ export const UpdateProductResponse = zod.object({
       value: zod.string(),
     }),
   ),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -312,6 +322,8 @@ export const MoveProductResponse = zod.object({
       value: zod.string(),
     }),
   ),
+  sizeFrom: zod.number().nullish(),
+  sizeTo: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -441,6 +453,8 @@ export const GetCartResponseItem = zod.object({
         value: zod.string(),
       }),
     ),
+    sizeFrom: zod.number().nullish(),
+    sizeTo: zod.number().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),
@@ -488,6 +502,8 @@ export const UpdateCartItemResponse = zod.object({
         value: zod.string(),
       }),
     ),
+    sizeFrom: zod.number().nullish(),
+    sizeTo: zod.number().nullish(),
     createdAt: zod.coerce.date(),
     updatedAt: zod.coerce.date(),
   }),

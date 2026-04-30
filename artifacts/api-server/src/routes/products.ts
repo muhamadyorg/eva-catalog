@@ -27,7 +27,7 @@ router.get("/", requireAuth, async (req, res) => {
 });
 
 router.post("/", requireAuth, requireCanManageProducts, async (req, res) => {
-  const { name, price, catalogId, imageUrl, images, attributes, productId } = req.body;
+  const { name, price, catalogId, imageUrl, images, attributes, productId, sizeFrom, sizeTo } = req.body;
   if (!name || !price || !catalogId) {
     res.status(400).json({ error: "name, price, catalogId majburiy" });
     return;
@@ -43,6 +43,8 @@ router.post("/", requireAuth, requireCanManageProducts, async (req, res) => {
       imageUrl: imageUrl ?? null,
       images: (images as string[]) ?? [],
       attributes: (attributes as { key: string; value: string }[]) ?? [],
+      sizeFrom: sizeFrom != null ? Number(sizeFrom) : null,
+      sizeTo: sizeTo != null ? Number(sizeTo) : null,
     })
     .returning();
   const result = formatProduct(product);
@@ -88,7 +90,7 @@ router.get("/:id", requireAuth, async (req, res) => {
 
 router.put("/:id", requireAuth, requireCanManageProducts, async (req, res) => {
   const id = Number(req.params.id);
-  const { name, price, imageUrl, images, attributes, productId } = req.body;
+  const { name, price, imageUrl, images, attributes, productId, sizeFrom, sizeTo } = req.body;
   const update: Record<string, unknown> = { updatedAt: new Date() };
   if (name !== undefined) update.name = name;
   if (price !== undefined) update.price = String(price);
@@ -96,6 +98,8 @@ router.put("/:id", requireAuth, requireCanManageProducts, async (req, res) => {
   if (images !== undefined) update.images = images;
   if (attributes !== undefined) update.attributes = attributes;
   if (productId !== undefined) update.productId = productId;
+  if (sizeFrom !== undefined) update.sizeFrom = sizeFrom != null ? Number(sizeFrom) : null;
+  if (sizeTo !== undefined) update.sizeTo = sizeTo != null ? Number(sizeTo) : null;
   const [product] = await db.update(productsTable).set(update).where(eq(productsTable.id, id)).returning();
   if (!product) {
     res.status(404).json({ error: "Topilmadi" });
