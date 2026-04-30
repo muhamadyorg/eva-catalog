@@ -702,7 +702,7 @@ export default function CatalogBrowser() {
                   }}
                 >
                   {/* Rasm — chap, katalog kartasi balandligida */}
-                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 flex-shrink-0 bg-secondary/40 flex items-center justify-center overflow-hidden">
+                  <div className="relative w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] flex-shrink-0 bg-secondary/40 flex items-center justify-center overflow-hidden">
                     {thumb ? (
                       <img src={thumb} alt={product.name} className="w-full h-full object-cover" />
                     ) : (
