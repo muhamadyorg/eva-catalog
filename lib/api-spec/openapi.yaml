@@ -838,6 +838,16 @@ components:
           type: string
       required: [key, value]
 
+    SizeRange:
+      type: object
+      properties:
+        from:
+          type: integer
+        to:
+          type: integer
+          nullable: true
+      required: [from]
+
     Product:
       type: object
       properties:
@@ -862,19 +872,17 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ProductAttribute"
-        sizeFrom:
-          type: integer
-          nullable: true
-        sizeTo:
-          type: integer
-          nullable: true
+        sizeRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/SizeRange"
         createdAt:
           type: string
           format: date-time
         updatedAt:
           type: string
           format: date-time
-      required: [id, productId, name, price, catalogId, images, attributes, createdAt, updatedAt]
+      required: [id, productId, name, price, catalogId, images, attributes, sizeRanges, createdAt, updatedAt]
 
     CreateProductBody:
       type: object
@@ -898,12 +906,10 @@ components:
             $ref: "#/components/schemas/ProductAttribute"
         productId:
           type: string
-        sizeFrom:
-          type: integer
-          nullable: true
-        sizeTo:
-          type: integer
-          nullable: true
+        sizeRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/SizeRange"
       required: [name, price, catalogId]
 
     UpdateProductBody:
@@ -926,12 +932,10 @@ components:
             $ref: "#/components/schemas/ProductAttribute"
         productId:
           type: string
-        sizeFrom:
-          type: integer
-          nullable: true
-        sizeTo:
-          type: integer
-          nullable: true
+        sizeRanges:
+          type: array
+          items:
+            $ref: "#/components/schemas/SizeRange"
 
     MoveProductBody:
       type: object

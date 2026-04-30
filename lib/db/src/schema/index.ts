@@ -38,8 +38,7 @@ export const productsTable = pgTable("products", {
   imageUrl: text("image_url"),
   images: jsonb("images").notNull().default([]),
   attributes: jsonb("attributes").notNull().default([]),
-  sizeFrom: integer("size_from"),
-  sizeTo: integer("size_to"),
+  sizeRanges: jsonb("size_ranges").notNull().default([]),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
