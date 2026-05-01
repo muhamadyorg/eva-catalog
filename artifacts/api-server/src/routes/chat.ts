@@ -2,16 +2,14 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { fileURLToPath } from "url";
 import { db, conversationsTable, chatMessagesTable, usersTable } from "@workspace/db";
 import { eq, and, or, desc } from "drizzle-orm";
 import { requireAuth, requireCanManageProducts } from "../middlewares/auth.js";
 import { broadcastToUser, broadcastToManagers } from "../lib/ws.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const CHAT_UPLOADS_DIR = path.join(__dirname, "../../uploads/chat");
+const CHAT_UPLOADS_DIR = process.env.UPLOADS_DIR
+  ? path.join(path.resolve(process.env.UPLOADS_DIR), "chat")
+  : path.join(process.cwd(), "uploads", "chat");
 fs.mkdirSync(CHAT_UPLOADS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
