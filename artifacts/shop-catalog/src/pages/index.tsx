@@ -735,21 +735,21 @@ export default function CatalogBrowser() {
                   <div className="w-px bg-border self-stretch flex-shrink-0" />
 
                   {/* Ma'lumotlar — o'ng */}
-                  <CardContent className="flex-1 p-3 flex flex-col justify-center min-w-0 gap-1">
-                    <p className="font-medium text-base leading-tight line-clamp-3" title={product.name}>{product.name}</p>
-                    <p className="text-base text-primary font-bold">{Number(product.price).toLocaleString()} so'm</p>
+                  <CardContent className="flex-1 p-0 flex flex-col justify-center min-w-0 divide-y divide-border">
+                    <p className="font-medium text-sm leading-tight line-clamp-2 px-3 py-2" title={product.name}>{product.name}</p>
+                    <p className="text-sm text-primary font-bold px-3 py-2">{Number(product.price).toLocaleString()} so'm</p>
                     {(product.sizeRanges as { from: number; to?: number | null }[])?.length > 0 && (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs text-muted-foreground px-3 py-2">
                         Razmer: {(product.sizeRanges as { from: number; to?: number | null }[]).map((r) => r.to != null ? `${r.from}–${r.to}` : `${r.from}`).join(", ")}
                       </p>
                     )}
                     {colors.length > 0 && (
-                      <div className="flex gap-1 flex-wrap">
-                        {colors.slice(0, 3).map((c) => (
+                      <div className="flex gap-1 flex-wrap px-3 py-2">
+                        {colors.slice(0, 4).map((c) => (
                           <Badge key={c} variant="secondary" className="text-[9px] px-1.5 py-0 h-4">{c}</Badge>
                         ))}
-                        {colors.length > 3 && (
-                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">+{colors.length - 3}</Badge>
+                        {colors.length > 4 && (
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 h-4">+{colors.length - 4}</Badge>
                         )}
                       </div>
                     )}
