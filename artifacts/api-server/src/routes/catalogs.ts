@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { db, catalogsTable, productsTable } from "@workspace/db";
-import { eq, isNull, count, sql } from "drizzle-orm";
+import { eq, isNull, count } from "drizzle-orm";
 import { CreateCatalogBody, UpdateCatalogBody, MoveCatalogBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { broadcast } from "../lib/ws.js";
+import { translateFromUz } from "../lib/translate.js";
 
 const router = Router();
 
@@ -50,6 +51,12 @@ router.post("/", requireAuth, requireAdmin, async (req, res) => {
     .insert(catalogsTable)
     .values({ name, parentId: parentId ?? null, imageUrl: imageUrl ?? null, sortOrder: sortOrder ?? 0 })
     .returning();
+
+  translateFromUz(name).then(({ ru, en }) =>
+    db.update(catalogsTable).set({ nameRu: ru, nameEn: en }).where(eq(catalogsTable.id, cat.id))
+      .then(() => catalogWithCounts(cat.id).then(updated => updated && broadcast({ type: "catalog_updated", catalog: updated })))
+  ).catch(() => {});
+
   const result = await catalogWithCounts(cat.id);
   broadcast({ type: "catalog_created", catalog: result });
   res.status(201).json(result);
@@ -77,6 +84,14 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   if (parsed.data.imageUrl !== undefined) update.imageUrl = parsed.data.imageUrl;
   if (parsed.data.sortOrder !== undefined) update.sortOrder = parsed.data.sortOrder;
   await db.update(catalogsTable).set(update).where(eq(catalogsTable.id, id));
+
+  if (parsed.data.name !== undefined) {
+    translateFromUz(parsed.data.name).then(({ ru, en }) =>
+      db.update(catalogsTable).set({ nameRu: ru, nameEn: en }).where(eq(catalogsTable.id, id))
+        .then(() => catalogWithCounts(id).then(updated => updated && broadcast({ type: "catalog_updated", catalog: updated })))
+    ).catch(() => {});
+  }
+
   const result = await catalogWithCounts(id);
   broadcast({ type: "catalog_updated", catalog: result });
   res.json(result);
@@ -105,12 +120,12 @@ router.post("/:id/move", requireAuth, requireAdmin, async (req, res) => {
 
 router.get("/:id/breadcrumb", requireAuth, async (req, res) => {
   const id = Number(req.params.id);
-  const breadcrumb: { id: number; name: string }[] = [];
+  const breadcrumb: { id: number; name: string; nameRu: string | null; nameEn: string | null }[] = [];
   let currentId: number | null = id;
   while (currentId !== null) {
     const [cat] = await db.select().from(catalogsTable).where(eq(catalogsTable.id, currentId));
     if (!cat) break;
-    breadcrumb.unshift({ id: cat.id, name: cat.name });
+    breadcrumb.unshift({ id: cat.id, name: cat.name, nameRu: cat.nameRu ?? null, nameEn: cat.nameEn ?? null });
     currentId = cat.parentId ?? null;
   }
   res.json(breadcrumb);

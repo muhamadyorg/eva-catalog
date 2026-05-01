@@ -23,6 +23,8 @@ export const usersTable = pgTable("users", {
 export const catalogsTable = pgTable("catalogs", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  nameRu: text("name_ru"),
+  nameEn: text("name_en"),
   parentId: integer("parent_id"),
   imageUrl: text("image_url"),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -33,6 +35,8 @@ export const productsTable = pgTable("products", {
   id: serial("id").primaryKey(),
   productId: text("product_id").notNull().unique(),
   name: text("name").notNull(),
+  nameRu: text("name_ru"),
+  nameEn: text("name_en"),
   price: numeric("price", { precision: 12, scale: 2 }).notNull(),
   catalogId: integer("catalog_id").notNull(),
   imageUrl: text("image_url"),

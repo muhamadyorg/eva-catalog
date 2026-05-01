@@ -4,6 +4,7 @@ import { eq, inArray } from "drizzle-orm";
 import { requireAuth, requireCanManageProducts } from "../middlewares/auth.js";
 import { broadcast } from "../lib/ws.js";
 import { nanoid } from "nanoid";
+import { translateFromUz } from "../lib/translate.js";
 
 const router = Router();
 
@@ -47,6 +48,13 @@ router.post("/", requireAuth, requireCanManageProducts, async (req, res) => {
       sizeRanges: (sizeRanges as { from: number; to?: number | null }[]) ?? [],
     })
     .returning();
+
+  translateFromUz(name).then(({ ru, en }) =>
+    db.update(productsTable).set({ nameRu: ru, nameEn: en }).where(eq(productsTable.id, product.id))
+      .then(() => db.select().from(productsTable).where(eq(productsTable.id, product.id)))
+      .then(([p]) => p && broadcast({ type: "product_updated", product: formatProduct(p) }))
+  ).catch(() => {});
+
   const result = formatProduct(product);
   broadcast({ type: "product_created", product: result });
   res.status(201).json(result);
@@ -104,6 +112,15 @@ router.put("/:id", requireAuth, requireCanManageProducts, async (req, res) => {
     res.status(404).json({ error: "Topilmadi" });
     return;
   }
+
+  if (name !== undefined) {
+    translateFromUz(name).then(({ ru, en }) =>
+      db.update(productsTable).set({ nameRu: ru, nameEn: en }).where(eq(productsTable.id, id))
+        .then(() => db.select().from(productsTable).where(eq(productsTable.id, id)))
+        .then(([p]) => p && broadcast({ type: "product_updated", product: formatProduct(p) }))
+    ).catch(() => {});
+  }
+
   const result = formatProduct(product);
   broadcast({ type: "product_updated", product: result });
   res.json(result);

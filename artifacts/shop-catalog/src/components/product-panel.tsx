@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Product } from "@workspace/api-client-react";
 import { useCart } from "./cart-provider";
 import { useAuth } from "./auth-provider";
+import { useLang } from "./lang-provider";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
@@ -118,6 +119,7 @@ function ImageGallery({ images, name }: { images: string[]; name: string }) {
 export function ProductPanel({ product, onClose, onEdit, canManage }: ProductPanelProps) {
   const { addItem } = useCart();
   const { user } = useAuth();
+  const { getName } = useLang();
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [adding, setAdding] = useState(false);
@@ -169,10 +171,10 @@ export function ProductPanel({ product, onClose, onEdit, canManage }: ProductPan
 
       <div className="flex-1 overflow-y-auto">
         <div className="p-4 space-y-4">
-          <ImageGallery images={allImages} name={product.name} />
+          <ImageGallery images={allImages} name={getName(product)} />
 
           <div>
-            <h2 className="text-xl font-bold leading-tight">{product.name}</h2>
+            <h2 className="text-xl font-bold leading-tight">{getName(product)}</h2>
             <p className="text-2xl font-bold text-primary mt-1">
               {Number(product.price).toLocaleString()} <span className="text-base font-normal text-muted-foreground">so'm</span>
             </p>

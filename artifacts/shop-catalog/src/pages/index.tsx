@@ -20,6 +20,7 @@ import {
 import { useAuth } from "@/components/auth-provider";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { useLang } from "@/components/lang-provider";
 import { ProductPanel } from "@/components/product-panel";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -362,6 +363,7 @@ export default function CatalogBrowser() {
   const canManage = isAdmin || user?.role === "manager";
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { t, getName } = useLang();
 
   const { data: catalogs, isLoading: catalogsLoading } = useListCatalogs(
     currentParentId !== null ? { parentId: currentParentId } : {}
@@ -561,7 +563,7 @@ export default function CatalogBrowser() {
                 onClick={() => handleNavigate(bc.id)}
                 className={`hover:text-foreground transition-colors px-2 py-1 rounded-md hover:bg-secondary truncate max-w-[120px] ${idx === (breadcrumbs.length - 1) ? "text-foreground font-semibold" : ""}`}
               >
-                {bc.name}
+                {getName(bc)}
               </button>
             </div>
           ))}
@@ -677,7 +679,7 @@ export default function CatalogBrowser() {
                   )}
                 </div>
                 <CardContent className="p-2">
-                  <p className="font-medium truncate text-sm" title={catalog.name}>{catalog.name}</p>
+                  <p className="font-medium truncate text-sm" title={getName(catalog)}>{getName(catalog)}</p>
                   <p className="text-xs text-muted-foreground">
                     {catalog.childCount > 0 ? `${catalog.childCount} katalog` : `${catalog.productCount} mahsulot`}
                   </p>
@@ -736,7 +738,7 @@ export default function CatalogBrowser() {
 
                   {/* Ma'lumotlar — o'ng */}
                   <CardContent className="flex-1 p-0 flex flex-col justify-center min-w-0 divide-y divide-border">
-                    <p className="font-medium text-sm leading-tight line-clamp-2 px-3 py-2" title={product.name}>{product.name}</p>
+                    <p className="font-medium text-sm leading-tight line-clamp-2 px-3 py-2" title={getName(product)}>{getName(product)}</p>
                     <p className="text-sm text-primary font-bold px-3 py-2">{Number(product.price).toLocaleString()} so'm</p>
                     {(product.sizeRanges as { from: number; to?: number | null }[])?.length > 0 && (
                       <p className="text-xs text-muted-foreground px-3 py-2">

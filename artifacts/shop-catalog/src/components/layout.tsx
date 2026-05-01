@@ -19,6 +19,35 @@ import { useTheme } from "./theme-provider";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { Sheet, SheetContent, SheetTrigger } from "./ui/sheet";
 import { useState } from "react";
+import { useLang } from "./lang-provider";
+import type { Lang } from "@/i18n/translations";
+
+const LANGS: { code: Lang; label: string }[] = [
+  { code: "uz", label: "UZ" },
+  { code: "ru", label: "RU" },
+  { code: "en", label: "EN" },
+];
+
+function LangSwitcher({ className = "" }: { className?: string }) {
+  const { lang, setLang } = useLang();
+  return (
+    <div className={`flex items-center gap-0.5 ${className}`}>
+      {LANGS.map(({ code, label }) => (
+        <button
+          key={code}
+          onClick={() => setLang(code)}
+          className={`text-[10px] font-semibold px-1.5 py-0.5 rounded transition-colors ${
+            lang === code
+              ? "bg-primary text-primary-foreground"
+              : "text-muted-foreground hover:text-foreground hover:bg-secondary"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { user, isAdmin } = useAuth();
@@ -30,6 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const { isConnected } = useWebSocket();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [location] = useLocation();
+  const { t } = useLang();
 
   const handleLogout = () => {
     logout.mutate(undefined, {
@@ -48,12 +78,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         onClick={onClose}
       >
         <PackageSearch className="h-4 w-4" />
-        Katalog
+        {t("catalog")}
       </Link>
       {canManage && (
         <>
           <div className="pt-4 pb-2 px-3 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {isAdmin ? "Admin" : "Menejer"}
+            {isAdmin ? t("admin") : t("manager")}
           </div>
           <Link
             href="/admin/orders"
@@ -61,7 +91,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             onClick={onClose}
           >
             <ShoppingBag className="h-4 w-4" />
-            Buyurtmalar
+            {t("orders")}
           </Link>
           <Link
             href="/admin/chat"
@@ -69,7 +99,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             onClick={onClose}
           >
             <MessageCircle className="h-4 w-4" />
-            Chat
+            {t("chat")}
           </Link>
           {isAdmin && (
             <>
@@ -79,7 +109,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 onClick={onClose}
               >
                 <Users className="h-4 w-4" />
-                Foydalanuvchilar
+                {t("users")}
               </Link>
               <Link
                 href="/admin/settings"
@@ -87,7 +117,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 onClick={onClose}
               >
                 <Settings className="h-4 w-4" />
-                Sozlamalar
+                {t("settings")}
               </Link>
             </>
           )}
@@ -107,6 +137,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <span className="font-semibold text-sm tracking-tight">Shop Catalog</span>
           </div>
           <div className="flex items-center gap-1">
+            <LangSwitcher />
             <Button
               variant="ghost"
               size="icon"
@@ -126,7 +157,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={handleLogout}
-              title="Chiqish"
+              title={t("logout")}
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -159,17 +190,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center justify-between px-2">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className={`h-2 w-2 rounded-full ${isConnected ? "bg-green-500" : "bg-destructive animate-pulse"}`} />
-              {isConnected ? "Online" : "Ulanmoqda..."}
+              {isConnected ? t("online") : t("connecting")}
             </div>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            >
-              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </Button>
+            </div>
           </div>
+
+          <LangSwitcher className="px-2" />
 
           <div className="flex items-center gap-3 px-2">
             <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
@@ -184,7 +219,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               size="icon"
               className="h-8 w-8 text-muted-foreground hover:text-foreground"
               onClick={handleLogout}
-              title="Chiqish"
+              title={t("logout")}
             >
               <LogOut className="h-4 w-4" />
             </Button>
@@ -201,6 +236,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
 
         <div className="flex items-center gap-1">
+          <LangSwitcher />
           <Button
             variant="ghost"
             size="icon"
@@ -234,7 +270,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                   onClick={handleLogout}
                 >
                   <LogOut className="h-4 w-4 mr-2" />
-                  Chiqish
+                  {t("logout")}
                 </Button>
               </div>
             </SheetContent>

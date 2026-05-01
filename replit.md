@@ -24,6 +24,7 @@ Ierarxik onlayn katalog boshqaruv tizimi. Admin ilovasi va foydalanuvchi ko'rish
 
 - Ierarxik kataloglar (cheksiz ichma-ich papkalar)
 - Mahsulotlar: product_id, nom, narx, **ko'p rasm** (multi-image gallery), dinamik atributlar, ranglar
+- **Til tanlash (UZ/RU/EN)**: header'da til tugmasi; mahsulot/katalog nomlari MyMemory API orqali avtomatik tarjima qilinadi
 - **ProductPanel**: Desktop (right panel) + Mobile (bottom sheet) — swipeable image gallery, thumbnails
 - **Savat (Cart)**: foydalanuvchi savatga qo'shish, rang/miqdor tanlash, buyurtma berish
 - **Buyurtmalar (Orders)**: admin/menejer uchun buyurtma holati boshqaruvi
@@ -35,6 +36,14 @@ Ierarxik onlayn katalog boshqaruv tizimi. Admin ilovasi va foydalanuvchi ko'rish
 - Dark mode default (toggle mavjud)
 - Real-time yangilanishlar (WebSocket)
 - PWA qo'llab-quvvatlash
+
+## Translation System
+
+- `artifacts/shop-catalog/src/i18n/translations.ts` — UI label translations (uz/ru/en)
+- `artifacts/shop-catalog/src/components/lang-provider.tsx` — React context, `useLang()` hook
+- `artifacts/api-server/src/lib/translate.ts` — `translateFromUz()` via MyMemory free API
+- DB: `catalogs.name_ru`, `catalogs.name_en`, `products.name_ru`, `products.name_en`
+- Translation triggered async on create/update — doesn't block the API response
 
 ## Default Credentials
 

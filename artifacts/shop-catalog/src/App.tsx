@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/components/auth-provider";
 import { CartProvider } from "@/components/cart-provider";
+import { LangProvider } from "@/components/lang-provider";
 import { CartDrawer } from "@/components/cart-drawer";
 import { Layout } from "@/components/layout";
 
@@ -78,15 +79,17 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <AuthProvider>
-              <CartProvider>
-                <AppRoutes />
-                <CartDrawer />
-              </CartProvider>
-            </AuthProvider>
-          </WouterRouter>
-          <Toaster />
+          <LangProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <AuthProvider>
+                <CartProvider>
+                  <AppRoutes />
+                  <CartDrawer />
+                </CartProvider>
+              </AuthProvider>
+            </WouterRouter>
+            <Toaster />
+          </LangProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>

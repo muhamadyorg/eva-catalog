@@ -82,6 +82,8 @@ export interface BlockUserBody {
 export interface Catalog {
   id: number;
   name: string;
+  nameRu?: string | null;
+  nameEn?: string | null;
   parentId?: number | null;
   imageUrl?: string | null;
   sortOrder: number;
@@ -93,6 +95,8 @@ export interface Catalog {
 export interface CatalogBreadcrumbItem {
   id: number;
   name: string;
+  nameRu?: string | null;
+  nameEn?: string | null;
 }
 
 export interface CreateCatalogBody {
@@ -126,6 +130,8 @@ export interface Product {
   id: number;
   productId: string;
   name: string;
+  nameRu?: string | null;
+  nameEn?: string | null;
   price: number;
   catalogId: number;
   imageUrl?: string | null;

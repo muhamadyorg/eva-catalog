@@ -769,6 +769,12 @@ components:
           type: integer
         name:
           type: string
+        nameRu:
+          type: string
+          nullable: true
+        nameEn:
+          type: string
+          nullable: true
         parentId:
           type: integer
           nullable: true
@@ -793,6 +799,12 @@ components:
           type: integer
         name:
           type: string
+        nameRu:
+          type: string
+          nullable: true
+        nameEn:
+          type: string
+          nullable: true
       required: [id, name]
 
     CreateCatalogBody:
@@ -857,6 +869,12 @@ components:
           type: string
         name:
           type: string
+        nameRu:
+          type: string
+          nullable: true
+        nameEn:
+          type: string
+          nullable: true
         price:
           type: number
         catalogId:
