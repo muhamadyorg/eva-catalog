@@ -142,18 +142,14 @@ server {
     listen 80;
     server_name eva.muhamadyorg.uz;
 
+    # Rasm yuklanish hajmi (10MB gacha ruxsat)
+    client_max_body_size 20m;
+
     # Frontend static fayllar
     root /www/wwwroot/eva.muhamadyorg.uz/artifacts/shop-catalog/dist;
     index index.html;
 
-    # Rasmlarni Nginx to'g'ridan xizmat qilsin (tez va ishonchli)
-    location /api/uploads/ {
-        alias /www/wwwroot/eva.muhamadyorg.uz/uploads/;
-        expires 30d;
-        add_header Cache-Control "public, immutable";
-    }
-
-    # Qolgan API so'rovlarini Node.js serverga yo'naltirish
+    # Barcha API so'rovlari (upload, download, boshqa) — Node.js ga
     location /api/ {
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
@@ -163,6 +159,9 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_cache_bypass $http_upgrade;
+        # Katta fayllar uchun timeout oshirish
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
     }
 
     # WebSocket (real-time)
@@ -175,10 +174,6 @@ server {
     }
 
     # React SPA — barcha yo'llar index.html ga
-    location /shop-catalog/ {
-        try_files $uri $uri/ /shop-catalog/index.html;
-    }
-
     location / {
         try_files $uri $uri/ /index.html;
     }
