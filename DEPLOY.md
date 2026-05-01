@@ -59,7 +59,11 @@ DATABASE_URL=postgresql://eva_user:StrongPass123@localhost:5432/eva_catalog
 SESSION_SECRET=o'zingiz_yarating_uzun_random_string_shu_yergaed
 PORT=3100
 NODE_ENV=production
+UPLOADS_DIR=/www/wwwroot/eva.muhamadyorg.uz/uploads
 EOF
+
+# Uploads papkasini yarating
+mkdir -p /www/wwwroot/eva.muhamadyorg.uz/uploads
 ```
 
 ---
@@ -142,7 +146,14 @@ server {
     root /www/wwwroot/eva.muhamadyorg.uz/artifacts/shop-catalog/dist;
     index index.html;
 
-    # API so'rovlarini Node.js serverga yo'naltirish
+    # Rasmlarni Nginx to'g'ridan xizmat qilsin (tez va ishonchli)
+    location /api/uploads/ {
+        alias /www/wwwroot/eva.muhamadyorg.uz/uploads/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Qolgan API so'rovlarini Node.js serverga yo'naltirish
     location /api/ {
         proxy_pass http://127.0.0.1:3100;
         proxy_http_version 1.1;
