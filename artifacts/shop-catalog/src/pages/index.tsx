@@ -691,7 +691,8 @@ export default function CatalogBrowser() {
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {products!.map((product) => {
               const colors = (product.attributes as Attr[]).filter((a) => a.key === "Rang").map((a) => a.value);
-              const allImages = [...(product.images as string[] ?? []), product.imageUrl].filter(Boolean) as string[];
+              const imgArr = (product.images as string[] ?? []);
+              const allImages = [...new Set([...imgArr, ...(product.imageUrl ? [product.imageUrl] : [])].filter(Boolean))];
               const thumb = allImages[0] ?? null;
               const isSelected = selectedProductIds.includes(product.id);
               const isViewing = viewProduct?.id === product.id;
@@ -730,6 +731,8 @@ export default function CatalogBrowser() {
                       </div>
                     )}
                   </div>
+
+                  <div className="w-px bg-border self-stretch flex-shrink-0" />
 
                   {/* Ma'lumotlar — o'ng */}
                   <CardContent className="flex-1 p-3 flex flex-col justify-center min-w-0 gap-1">
