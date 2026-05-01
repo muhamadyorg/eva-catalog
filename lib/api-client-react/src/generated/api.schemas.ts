@@ -87,9 +87,18 @@ export interface Catalog {
   parentId?: number | null;
   imageUrl?: string | null;
   sortOrder: number;
+  isPublic: boolean;
   createdAt: string;
   childCount: number;
   productCount: number;
+}
+
+export interface CatalogPermissionUser {
+  userId: number;
+  username: string;
+  displayName?: string | null;
+  role: string;
+  hasAccess: boolean;
 }
 
 export interface CatalogBreadcrumbItem {
@@ -110,6 +119,7 @@ export interface UpdateCatalogBody {
   name?: string;
   imageUrl?: string | null;
   sortOrder?: number;
+  isPublic?: boolean;
 }
 
 export interface MoveCatalogBody {
@@ -232,6 +242,10 @@ export interface UpdateOrderStatusBody {
 
 export type ListCatalogsParams = {
   parentId?: number | null;
+};
+
+export type SetCatalogPermissionBody = {
+  hasAccess: boolean;
 };
 
 export type ListProductsParams = {

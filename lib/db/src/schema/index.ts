@@ -28,6 +28,14 @@ export const catalogsTable = pgTable("catalogs", {
   parentId: integer("parent_id"),
   imageUrl: text("image_url"),
   sortOrder: integer("sort_order").notNull().default(0),
+  isPublic: boolean("is_public").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const catalogPermissionsTable = pgTable("catalog_permissions", {
+  id: serial("id").primaryKey(),
+  catalogId: integer("catalog_id").notNull(),
+  userId: integer("user_id").notNull(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -116,3 +124,4 @@ export type CartItem = typeof cartItemsTable.$inferSelect;
 export type Order = typeof ordersTable.$inferSelect;
 export type Conversation = typeof conversationsTable.$inferSelect;
 export type ChatMessage = typeof chatMessagesTable.$inferSelect;
+export type CatalogPermission = typeof catalogPermissionsTable.$inferSelect;

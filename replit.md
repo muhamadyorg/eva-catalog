@@ -31,6 +31,7 @@ Ierarxik onlayn katalog boshqaruv tizimi. Admin ilovasi va foydalanuvchi ko'rish
 - **Menejer roli**: mahsulot qo'shish/tahrirlash huquqi (katalog yaratmaydi)
 - **Yagona sessiya**: login bo'lganda eski sessiya uzilib, faqat yangi qurilma ishlaydi
 - **Foydalanuvchi bloklash**: admin foydalanuvchini bloklashi yoki tizimdan majburiy chiqarishi mumkin
+- **Katalog ruxsatlari**: admin har bir root-katalog uchun "ommaviy/cheklangan" sozlashi va har bir foydalanuvchiga alohida ruxsat berishi mumkin (catalog_permissions jadvali + isPublic bayrog'i)
 - Admin: katalog/mahsulot yaratish, tahrirlash, o'chirish; bulk delete
 - 3 xil ko'rinish hajmi (kichik/o'rta/katta)
 - Dark mode default (toggle mavjud)

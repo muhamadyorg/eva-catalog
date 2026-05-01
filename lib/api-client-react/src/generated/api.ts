@@ -25,6 +25,7 @@ import type {
   CartItemFull,
   Catalog,
   CatalogBreadcrumbItem,
+  CatalogPermissionUser,
   ChangePasswordBody,
   CreateCatalogBody,
   CreateProductBody,
@@ -41,6 +42,7 @@ import type {
   Order,
   PlaceOrderBody,
   Product,
+  SetCatalogPermissionBody,
   UpdateCartItemBody,
   UpdateCatalogBody,
   UpdateOrderStatusBody,
@@ -1059,6 +1061,183 @@ export function useGetCatalogBreadcrumb<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get all users with their access status for a catalog
+ */
+export const getGetCatalogPermissionsUrl = (id: number) => {
+  return `/api/catalogs/${id}/permissions`;
+};
+
+export const getCatalogPermissions = async (
+  id: number,
+  options?: RequestInit,
+): Promise<CatalogPermissionUser[]> => {
+  return customFetch<CatalogPermissionUser[]>(getGetCatalogPermissionsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetCatalogPermissionsQueryKey = (id: number) => {
+  return [`/api/catalogs/${id}/permissions`] as const;
+};
+
+export const getGetCatalogPermissionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getCatalogPermissions>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCatalogPermissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetCatalogPermissionsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getCatalogPermissions>>
+  > = ({ signal }) => getCatalogPermissions(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getCatalogPermissions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetCatalogPermissionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getCatalogPermissions>>
+>;
+export type GetCatalogPermissionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all users with their access status for a catalog
+ */
+
+export function useGetCatalogPermissions<
+  TData = Awaited<ReturnType<typeof getCatalogPermissions>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getCatalogPermissions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetCatalogPermissionsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Grant or revoke user access to a catalog
+ */
+export const getSetCatalogPermissionUrl = (id: number, userId: number) => {
+  return `/api/catalogs/${id}/permissions/${userId}`;
+};
+
+export const setCatalogPermission = async (
+  id: number,
+  userId: number,
+  setCatalogPermissionBody: SetCatalogPermissionBody,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getSetCatalogPermissionUrl(id, userId), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(setCatalogPermissionBody),
+  });
+};
+
+export const getSetCatalogPermissionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setCatalogPermission>>,
+    TError,
+    { id: number; userId: number; data: BodyType<SetCatalogPermissionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof setCatalogPermission>>,
+  TError,
+  { id: number; userId: number; data: BodyType<SetCatalogPermissionBody> },
+  TContext
+> => {
+  const mutationKey = ["setCatalogPermission"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof setCatalogPermission>>,
+    { id: number; userId: number; data: BodyType<SetCatalogPermissionBody> }
+  > = (props) => {
+    const { id, userId, data } = props ?? {};
+
+    return setCatalogPermission(id, userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SetCatalogPermissionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof setCatalogPermission>>
+>;
+export type SetCatalogPermissionMutationBody =
+  BodyType<SetCatalogPermissionBody>;
+export type SetCatalogPermissionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Grant or revoke user access to a catalog
+ */
+export const useSetCatalogPermission = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof setCatalogPermission>>,
+    TError,
+    { id: number; userId: number; data: BodyType<SetCatalogPermissionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof setCatalogPermission>>,
+  TError,
+  { id: number; userId: number; data: BodyType<SetCatalogPermissionBody> },
+  TContext
+> => {
+  return useMutation(getSetCatalogPermissionMutationOptions(options));
+};
 
 /**
  * @summary List products in a catalog

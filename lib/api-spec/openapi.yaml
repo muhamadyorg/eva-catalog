@@ -237,6 +237,57 @@ paths:
                 items:
                   $ref: "#/components/schemas/CatalogBreadcrumbItem"
 
+  /catalogs/{id}/permissions:
+    get:
+      operationId: getCatalogPermissions
+      tags: [catalogs]
+      summary: Get all users with their access status for a catalog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of users with access info
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CatalogPermissionUser"
+
+  /catalogs/{id}/permissions/{userId}:
+    put:
+      operationId: setCatalogPermission
+      tags: [catalogs]
+      summary: Grant or revoke user access to a catalog
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hasAccess:
+                  type: boolean
+              required: [hasAccess]
+      responses:
+        "200":
+          description: Updated
+
   /products:
     get:
       operationId: listProducts
@@ -783,6 +834,8 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        isPublic:
+          type: boolean
         createdAt:
           type: string
           format: date-time
@@ -790,7 +843,23 @@ components:
           type: integer
         productCount:
           type: integer
-      required: [id, name, sortOrder, createdAt, childCount, productCount]
+      required: [id, name, sortOrder, isPublic, createdAt, childCount, productCount]
+
+    CatalogPermissionUser:
+      type: object
+      properties:
+        userId:
+          type: integer
+        username:
+          type: string
+        displayName:
+          type: string
+          nullable: true
+        role:
+          type: string
+        hasAccess:
+          type: boolean
+      required: [userId, username, role, hasAccess]
 
     CatalogBreadcrumbItem:
       type: object
@@ -832,6 +901,8 @@ components:
           nullable: true
         sortOrder:
           type: integer
+        isPublic:
+          type: boolean
 
     MoveCatalogBody:
       type: object

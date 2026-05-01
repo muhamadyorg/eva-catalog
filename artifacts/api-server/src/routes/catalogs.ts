@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { db, catalogsTable, productsTable } from "@workspace/db";
-import { eq, isNull, count } from "drizzle-orm";
+import { db, catalogsTable, productsTable, usersTable, catalogPermissionsTable } from "@workspace/db";
+import { eq, isNull, count, and, inArray } from "drizzle-orm";
 import { CreateCatalogBody, UpdateCatalogBody, MoveCatalogBody } from "@workspace/api-zod";
 import { requireAuth, requireAdmin } from "../middlewares/auth.js";
 import { broadcast } from "../lib/ws.js";
@@ -24,14 +24,32 @@ async function catalogWithCounts(id: number) {
 
 router.get("/", requireAuth, async (req, res) => {
   const parentId = req.query.parentId !== undefined ? Number(req.query.parentId) : null;
+  const sessionRole = req.session?.role as string | undefined;
+  const isPrivileged = sessionRole === "admin" || sessionRole === "manager";
+
   let catalogs;
   if (parentId === null || isNaN(parentId as number)) {
     catalogs = await db.select().from(catalogsTable).where(isNull(catalogsTable.parentId)).orderBy(catalogsTable.sortOrder, catalogsTable.name);
   } else {
     catalogs = await db.select().from(catalogsTable).where(eq(catalogsTable.parentId, parentId as number)).orderBy(catalogsTable.sortOrder, catalogsTable.name);
   }
+
+  // Apply permission filter for root catalogs only (parentId is null)
+  let filtered = catalogs;
+  if ((parentId === null || isNaN(parentId as number)) && !isPrivileged) {
+    const userId = req.session?.userId as number | undefined;
+    if (userId) {
+      const permissions = await db
+        .select({ catalogId: catalogPermissionsTable.catalogId })
+        .from(catalogPermissionsTable)
+        .where(eq(catalogPermissionsTable.userId, userId));
+      const permittedIds = new Set(permissions.map((p) => p.catalogId));
+      filtered = catalogs.filter((cat) => cat.isPublic || permittedIds.has(cat.id));
+    }
+  }
+
   const withCounts = await Promise.all(
-    catalogs.map(async (cat) => {
+    filtered.map(async (cat) => {
       const [{ childCount }] = await db.select({ childCount: count() }).from(catalogsTable).where(eq(catalogsTable.parentId, cat.id));
       const [{ productCount }] = await db.select({ productCount: count() }).from(productsTable).where(eq(productsTable.catalogId, cat.id));
       return { ...cat, childCount: Number(childCount), productCount: Number(productCount) };
@@ -83,6 +101,7 @@ router.put("/:id", requireAuth, requireAdmin, async (req, res) => {
   if (parsed.data.name !== undefined) update.name = parsed.data.name;
   if (parsed.data.imageUrl !== undefined) update.imageUrl = parsed.data.imageUrl;
   if (parsed.data.sortOrder !== undefined) update.sortOrder = parsed.data.sortOrder;
+  if (parsed.data.isPublic !== undefined) update.isPublic = parsed.data.isPublic;
   await db.update(catalogsTable).set(update).where(eq(catalogsTable.id, id));
 
   if (parsed.data.name !== undefined) {
@@ -129,6 +148,60 @@ router.get("/:id/breadcrumb", requireAuth, async (req, res) => {
     currentId = cat.parentId ?? null;
   }
   res.json(breadcrumb);
+});
+
+// Permissions management (admin only)
+router.get("/:id/permissions", requireAuth, requireAdmin, async (req, res) => {
+  const catalogId = Number(req.params.id);
+
+  // Get all non-admin/manager users
+  const allUsers = await db
+    .select({
+      id: usersTable.id,
+      username: usersTable.username,
+      displayName: usersTable.displayName,
+      role: usersTable.role,
+    })
+    .from(usersTable)
+    .where(eq(usersTable.isBlocked, false));
+
+  // Get existing permissions for this catalog
+  const existingPermissions = await db
+    .select({ userId: catalogPermissionsTable.userId })
+    .from(catalogPermissionsTable)
+    .where(eq(catalogPermissionsTable.catalogId, catalogId));
+  const permittedUserIds = new Set(existingPermissions.map((p) => p.userId));
+
+  const result = allUsers
+    .filter((u) => u.role === "user")
+    .map((u) => ({
+      userId: u.id,
+      username: u.username,
+      displayName: u.displayName ?? null,
+      role: u.role,
+      hasAccess: permittedUserIds.has(u.id),
+    }));
+
+  res.json(result);
+});
+
+router.put("/:id/permissions/:userId", requireAuth, requireAdmin, async (req, res) => {
+  const catalogId = Number(req.params.id);
+  const userId = Number(req.params.userId);
+  const { hasAccess } = req.body as { hasAccess: boolean };
+
+  if (hasAccess) {
+    await db
+      .insert(catalogPermissionsTable)
+      .values({ catalogId, userId })
+      .onConflictDoNothing();
+  } else {
+    await db
+      .delete(catalogPermissionsTable)
+      .where(and(eq(catalogPermissionsTable.catalogId, catalogId), eq(catalogPermissionsTable.userId, userId)));
+  }
+
+  res.json({ ok: true });
 });
 
 export default router;

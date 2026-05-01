@@ -10,6 +10,8 @@ import {
   useDeleteCatalog,
   useDeleteProduct,
   useBulkDeleteProducts,
+  useGetCatalogPermissions,
+  useSetCatalogPermission,
   getListCatalogsQueryKey,
   getListProductsQueryKey,
   getGetCatalogBreadcrumbQueryKey,
@@ -45,6 +47,8 @@ import {
   Tag,
   Palette,
   Images,
+  Shield,
+  Users,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
@@ -63,6 +67,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+import { Separator } from "@/components/ui/separator";
 
 type ViewSize = "small" | "medium" | "large";
 type Attr = { key: string; value: string };
@@ -332,6 +338,7 @@ export default function CatalogBrowser() {
   const [viewProduct, setViewProduct] = useState<Product | null>(null);
   const [editCatalog, setEditCatalog] = useState<Catalog | null>(null);
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [permCatalog, setPermCatalog] = useState<Catalog | null>(null);
 
   // Create catalog form
   const [newCatalogName, setNewCatalogName] = useState("");
@@ -662,6 +669,11 @@ export default function CatalogBrowser() {
                           <DropdownMenuItem onClick={(e) => openEditCatalog(catalog, e)}>
                             <Edit className="h-4 w-4 mr-2" /> Tahrirlash
                           </DropdownMenuItem>
+                          {currentParentId === null && (
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setPermCatalog(catalog); }}>
+                              <Shield className="h-4 w-4 mr-2" /> Ruxsatlar
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem
                             className="text-destructive focus:bg-destructive/10"
                             onClick={(e) => {
@@ -1067,6 +1079,134 @@ export default function CatalogBrowser() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Permissions dialog */}
+      {permCatalog && (
+        <CatalogPermissionsDialog
+          catalog={permCatalog}
+          onClose={() => setPermCatalog(null)}
+          onCatalogUpdate={(updated) => {
+            queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() });
+            setPermCatalog(updated);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function CatalogPermissionsDialog({
+  catalog,
+  onClose,
+  onCatalogUpdate,
+}: {
+  catalog: Catalog;
+  onClose: () => void;
+  onCatalogUpdate: (updated: Catalog) => void;
+}) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: users, isLoading } = useGetCatalogPermissions(catalog.id);
+
+  const setPermission = useSetCatalogPermission();
+  const updateCatalog = useUpdateCatalog();
+
+  const togglePublic = (isPublic: boolean) => {
+    updateCatalog.mutate(
+      { id: catalog.id, data: { isPublic } },
+      {
+        onSuccess: (updated) => {
+          queryClient.invalidateQueries({ queryKey: getListCatalogsQueryKey() });
+          onCatalogUpdate(updated as unknown as Catalog);
+        },
+        onError: () => toast({ title: "Xato", variant: "destructive" }),
+      }
+    );
+  };
+
+  const toggleUser = (userId: number, hasAccess: boolean) => {
+    setPermission.mutate(
+      { id: catalog.id, userId, data: { hasAccess } },
+      {
+        onSuccess: () => {
+          queryClient.invalidateQueries({ queryKey: [`/api/catalogs/${catalog.id}/permissions`] });
+        },
+        onError: () => toast({ title: "Xato", variant: "destructive" }),
+      }
+    );
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-primary" />
+            Ruxsatlar
+          </DialogTitle>
+          <DialogDescription className="truncate font-medium text-foreground">{catalog.name}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          {/* isPublic toggle */}
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/40">
+            <div>
+              <p className="text-sm font-medium">Ommaviy katalog</p>
+              <p className="text-xs text-muted-foreground">
+                {catalog.isPublic ? "Barcha foydalanuvchilarga ko'rinadi" : "Faqat ruxsat berilganlarga ko'rinadi"}
+              </p>
+            </div>
+            <Switch
+              checked={catalog.isPublic}
+              onCheckedChange={togglePublic}
+              disabled={updateCatalog.isPending}
+            />
+          </div>
+
+          {/* User list — only shown when not public */}
+          {!catalog.isPublic && (
+            <>
+              <Separator />
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <p className="text-sm font-medium">Foydalanuvchilar ruxsati</p>
+                </div>
+                {isLoading ? (
+                  <div className="space-y-2">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-10 rounded-md bg-secondary/50 animate-pulse" />
+                    ))}
+                  </div>
+                ) : users && users.length > 0 ? (
+                  <div className="space-y-1 max-h-60 overflow-y-auto">
+                    {users.map((u) => (
+                      <div key={u.userId} className="flex items-center justify-between px-3 py-2 rounded-md hover:bg-secondary/40">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{u.displayName || u.username}</p>
+                          {u.displayName && <p className="text-xs text-muted-foreground">@{u.username}</p>}
+                        </div>
+                        <Switch
+                          checked={u.hasAccess}
+                          onCheckedChange={(v) => toggleUser(u.userId, v)}
+                          disabled={setPermission.isPending}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">Foydalanuvchilar yo'q</p>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Yopish</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

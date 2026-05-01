@@ -68,6 +68,7 @@ export const ListCatalogsResponseItem = zod.object({
   parentId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   sortOrder: zod.number(),
+  isPublic: zod.boolean(),
   createdAt: zod.coerce.date(),
   childCount: zod.number(),
   productCount: zod.number(),
@@ -99,6 +100,7 @@ export const GetCatalogResponse = zod.object({
   parentId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   sortOrder: zod.number(),
+  isPublic: zod.boolean(),
   createdAt: zod.coerce.date(),
   childCount: zod.number(),
   productCount: zod.number(),
@@ -115,6 +117,7 @@ export const UpdateCatalogBody = zod.object({
   name: zod.string().optional(),
   imageUrl: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  isPublic: zod.boolean().optional(),
 });
 
 export const UpdateCatalogResponse = zod.object({
@@ -125,6 +128,7 @@ export const UpdateCatalogResponse = zod.object({
   parentId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   sortOrder: zod.number(),
+  isPublic: zod.boolean(),
   createdAt: zod.coerce.date(),
   childCount: zod.number(),
   productCount: zod.number(),
@@ -156,6 +160,7 @@ export const MoveCatalogResponse = zod.object({
   parentId: zod.number().nullish(),
   imageUrl: zod.string().nullish(),
   sortOrder: zod.number(),
+  isPublic: zod.boolean(),
   createdAt: zod.coerce.date(),
   childCount: zod.number(),
   productCount: zod.number(),
@@ -177,6 +182,36 @@ export const GetCatalogBreadcrumbResponseItem = zod.object({
 export const GetCatalogBreadcrumbResponse = zod.array(
   GetCatalogBreadcrumbResponseItem,
 );
+
+/**
+ * @summary Get all users with their access status for a catalog
+ */
+export const GetCatalogPermissionsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetCatalogPermissionsResponseItem = zod.object({
+  userId: zod.number(),
+  username: zod.string(),
+  displayName: zod.string().nullish(),
+  role: zod.string(),
+  hasAccess: zod.boolean(),
+});
+export const GetCatalogPermissionsResponse = zod.array(
+  GetCatalogPermissionsResponseItem,
+);
+
+/**
+ * @summary Grant or revoke user access to a catalog
+ */
+export const SetCatalogPermissionParams = zod.object({
+  id: zod.coerce.number(),
+  userId: zod.coerce.number(),
+});
+
+export const SetCatalogPermissionBody = zod.object({
+  hasAccess: zod.boolean(),
+});
 
 /**
  * @summary List products in a catalog
