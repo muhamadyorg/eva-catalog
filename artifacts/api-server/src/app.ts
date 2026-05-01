@@ -29,6 +29,9 @@ declare module "express-session" {
 
 const app: Express = express();
 
+// Nginx reverse proxy orqasida ishlash uchun
+app.set("trust proxy", 1);
+
 app.use(
   pinoHttp({
     logger,
@@ -55,7 +58,7 @@ app.use(
     store: new PgSession({
       conString: process.env.DATABASE_URL,
       tableName: "session",
-      createTableIfMissing: false,
+      createTableIfMissing: true,
     }),
     secret: process.env.SESSION_SECRET || "shop-catalog-secret",
     resave: false,
